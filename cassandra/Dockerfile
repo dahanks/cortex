@@ -1,4 +1,3 @@
 FROM cassandra:latest
 
-#this needs to run, but the container needs to be running
-#RUN /usr/bin/nodetool enablethrift
+RUN sed -i 's/^start_rpc.*$/start_rpc: true/' /etc/cassandra/cassandra.yaml
