@@ -9,7 +9,6 @@ build:
 	docker tag -f $(IMAGE):latest $(IMAGE):$(VERSION)
 
 run:
-	#do not run this before waiting for cassandra to finish
 	docker run -it \
 	--name titan \
 	$(IMAGE):$(VERSION) \
