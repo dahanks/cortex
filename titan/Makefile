@@ -11,6 +11,8 @@ build:
 run:
 	docker run -it \
 	--name titan \
+	--link cs1 \
+	--link es1 \
 	$(IMAGE):$(VERSION) \
 	/bin/bash
 
