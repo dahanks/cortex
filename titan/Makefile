@@ -9,12 +9,12 @@ build:
 	docker tag -f $(IMAGE):latest $(IMAGE):$(VERSION)
 
 run:
-	docker run -it \
+	docker run -d \
 	--name titan \
+	-p 8182:8182 \
 	--link cs1 \
 	--link es1 \
-	$(IMAGE):$(VERSION) \
-	/bin/bash
+	$(IMAGE):$(VERSION)
 
 update:
 	docker pull $(FROM_IMAGE)

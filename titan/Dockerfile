@@ -16,3 +16,5 @@ ADD audrey.properties $TITAN_HOME/conf/audrey.properties
 EXPOSE 8182
 EXPOSE 8183
 EXPOSE 8184
+
+CMD ["/bin/bash", "bin/gremlin-server.sh"]
