@@ -10,7 +10,7 @@ build:
 
 run:
 	docker run -d \
-	--name titan \
+	--name cortex-titan \
 	-p 8182:8182 \
 	--link cs1 \
 	--link es1 \

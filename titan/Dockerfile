@@ -1,4 +1,4 @@
-FROM isuper/java-oracle:jdk_8
+FROM cortex-maven
 
 RUN apt-get update && apt-get install unzip
 
