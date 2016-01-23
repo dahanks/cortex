@@ -7,4 +7,4 @@ WORKDIR /usr/local/neuron
 
 RUN mvn package
 
-CMD ["java", "-cp", "target/neuron-1.0-SNAPSHOT.jar", "gov.nasa.jpl.audrey.cortex.neuron.App"]
+CMD ["mvn", "exec:java", "-D", "exec.mainClass=gov.nasa.jpl.audrey.cortex.neuron.Neuron"]
