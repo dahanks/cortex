@@ -13,6 +13,7 @@ run:
 	--name neuron \
 	--link cs1 \
 	--link es1 \
+	--link ccd-apollo \
 	$(IMAGE):$(VERSION)
 
 update:
