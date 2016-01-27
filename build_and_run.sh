@@ -10,16 +10,17 @@ pushd elasticsearch/
 make && make run
 popd
 
-#Maven
-pushd maven/
-make
+#Apollo
+pushd apollo/
+make && make run
 popd
 
-#Titan
-pushd titan/
+#Maven
+pushd maven/
 make
 popd
 
 #Neuron
 pushd neuron/
 make && make run
+popd
