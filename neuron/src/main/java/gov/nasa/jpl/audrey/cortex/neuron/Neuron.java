@@ -1,6 +1,7 @@
 package gov.nasa.jpl.audrey.cortex.neuron;
 
 import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 
 import org.apache.activemq.transport.stomp.Stomp.Headers.Subscribe;
@@ -28,9 +29,16 @@ public class Neuron {
 
         //set up STOMP connection
         StompConnection connection = new StompConnection();
-        connection.open("ccd-apollo", 61613);
-        connection.connect("admin", "password");
-        connection.subscribe("/topic/gremlin", Subscribe.AckModeValues.CLIENT);
+        try {
+            connection.open("cortex-apollo", 61613);
+            connection.connect("admin", "password");
+            connection.subscribe("/topic/gremlin", Subscribe.AckModeValues.CLIENT);
+        } catch (UnknownHostException e) {
+            //make super sure we exit cleanly
+            e.printStackTrace();
+            System.exit(1);
+        }
+
         JSONParser parser = new JSONParser();
 
         while (true) {
