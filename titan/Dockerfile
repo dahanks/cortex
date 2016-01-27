@@ -9,6 +9,8 @@ RUN unzip /opt/titan.zip -d /opt/ && \
 
 ENV TITAN_HOME /opt/titan-1.0.0-hadoop1
 
+ADD audrey.properties $TITAN_HOME/conf/audrey.properties
+
 WORKDIR $TITAN_HOME
 
 EXPOSE 8182
