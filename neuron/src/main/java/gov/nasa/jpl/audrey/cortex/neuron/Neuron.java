@@ -22,7 +22,7 @@ public class Neuron {
 
     public static void main(String[] args) throws Exception {
         //set up graph connection
-        Configuration conf = new PropertiesConfiguration("/opt/titan-1.0.0-hadoop1/conf/audrey.properties");
+        Configuration conf = new PropertiesConfiguration("/usr/local/neuron/conf/audrey.properties");
         TitanGraph graph = TitanFactory.open(conf);
         GraphTraversalSource g = graph.traversal();
 
