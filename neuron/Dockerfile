@@ -1,10 +1,12 @@
 FROM cortex-maven
 
-ADD pom.xml /usr/local/neuron/pom.xml
-ADD src/ /usr/local/neuron/src
-ADD audrey.properties /usr/local/neuron/conf/audrey.properties
+ENV NEURON_HOME /usr/local/neuron
 
-WORKDIR /usr/local/neuron
+ADD pom.xml $NEURON_HOME/pom.xml
+ADD src/ $NEURON_HOME/src
+ADD audrey.properties $NEURON_HOME/conf/audrey.properties
+
+WORKDIR $NEURON_HOME
 
 RUN mvn package
 
