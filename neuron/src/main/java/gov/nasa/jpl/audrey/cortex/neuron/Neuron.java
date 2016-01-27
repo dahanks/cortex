@@ -2,7 +2,6 @@ package gov.nasa.jpl.audrey.cortex.neuron;
 
 import java.net.SocketTimeoutException;
 import java.util.ArrayList;
-
 import org.apache.activemq.transport.stomp.Stomp.Headers.Subscribe;
 import org.apache.activemq.transport.stomp.StompConnection;
 import org.apache.activemq.transport.stomp.StompFrame;
@@ -15,7 +14,7 @@ import org.apache.tinkerpop.gremlin.structure.Vertex;
 
 import com.thinkaurelius.titan.core.TitanGraph;
 import com.thinkaurelius.titan.core.TitanFactory;
-
+import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
@@ -70,7 +69,7 @@ public class Neuron {
             if (message.containsKey("operation")) {
                 runOperation(message);
             } else {
-                throw new NeuronOperationException("Neuron received unexpected message without 'operation' field");
+                throw new NeuronOperationException("Neuron received a valid JSON message without 'operation' field");
             }
         } catch (ParseException e) {
             logging.warn("Neuron could not parse a JSON message it received");
@@ -79,21 +78,50 @@ public class Neuron {
     }
 
     private void runOperation(JSONObject message) throws NeuronOperationException {
-        GraphTraversalSource g = graph.traversal();
-        switch (message.get("operation").toString()) {
-        case "getVertices":
-            GraphTraversal<Vertex, Vertex> gt = g.V();
-            ArrayList<Vertex> vertices = new ArrayList<Vertex>();
-            while (gt.hasNext()) {
-                vertices.add(gt.next());
-            }
-            for (Vertex vertex : vertices) {
-                System.out.println(vertex.property("name"));
-            }
-            break;
-        default:
-            throw new NeuronOperationException("Neuron received message with unrecognized 'operation'");
+        if (message.get("operation") instanceof JSONArray) {
+            parseOperations((JSONArray)message.get("operation"));
+        } else {
+            throw new NeuronOperationException("Neuron received operation that was not a JSON Array");
         }
+    }
+
+    private void parseOperations(JSONArray operations) throws NeuronOperationException {
+        for (int i = 0; i < operations.size(); ++i) {
+            if (!(operations.get(i) instanceof JSONObject)) {
+                throw new NeuronOperationException("An operation was parsed that was not a valid JSONObject");
+            }
+            JSONObject operation = (JSONObject)operations.get(i);
+            if (!operation.containsKey("function")) {
+                throw new NeuronOperationException("An operation was parsed that did not have a 'function' key");
+            }
+            switch (operation.get("function").toString()) {
+            case "addVertex":
+                addVertex(operation);
+                break;
+            case "addEdge":
+                break;
+            case "addProperty":
+                break;
+            //this case is really just for debugging
+            case "getVertices":
+                GraphTraversalSource g = graph.traversal();
+                GraphTraversal<Vertex, Vertex> gt = g.V();
+                ArrayList<Vertex> vertices = new ArrayList<Vertex>();
+                while (gt.hasNext()) {
+                    vertices.add(gt.next());
+                }
+                for (Vertex vertex : vertices) {
+                    System.out.println(vertex.property("name"));
+                }
+                break;
+            default:
+                throw new NeuronOperationException("Neuron received operation with unrecognized function");
+            }
+        }
+    }
+
+    private void addVertex(JSONObject operation) {
+        return;
     }
 
     private void run() throws Exception {
