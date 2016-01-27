@@ -10,7 +10,7 @@ build:
 
 run:
 	docker run -d \
-	--name es1 \
+	--name cortex-elasticsearch \
 	$(IMAGE):$(VERSION)
 
 update:

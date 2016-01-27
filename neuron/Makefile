@@ -11,10 +11,19 @@ build:
 run:
 	docker run -d \
 	--name neuron \
-	--link cs1 \
-	--link es1 \
-	--link ccd-apollo \
+	--link cortex-cassandra \
+	--link cortex-elasticsearch \
+	--link cortex-apollo \
 	$(IMAGE):$(VERSION)
+
+shell:
+	docker run -it \
+	--name neuron \
+	--link cortex-cassandra \
+	--link cortex-elasticsearch \
+	--link cortex-apollo \
+	$(IMAGE):$(VERSION) \
+	/bin/bash
 
 update:
 	docker pull $(FROM_IMAGE)

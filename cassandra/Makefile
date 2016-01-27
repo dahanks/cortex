@@ -10,7 +10,7 @@ build:
 
 run:
 	docker run -d \
-	--name cs1 \
+	--name cortex-cassandra \
 	$(IMAGE):$(VERSION)
 
 update:

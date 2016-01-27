@@ -12,17 +12,16 @@ run:
 	docker run -d \
 	--name neuron \
 	-p 8182:8182 \
-	--link cs1 \
-	--link es1 \
-	--link ccd-apollo \
+	--link cortex-cassandra \
+	--link cortex-elasticsearch \
 	$(IMAGE):$(VERSION)
 
 shell:
 	docker run -it \
 	--name gremlin \
 	-p 8182:8182 \
-	--link cs1 \
-	--link es1 \
+	--link cortex-cassandra \
+	--link cortex-elasticsearch \
 	$(IMAGE):$(VERSION) \
 	/bin/bash
 
