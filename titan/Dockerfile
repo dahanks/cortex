@@ -11,10 +11,8 @@ ENV TITAN_HOME /opt/titan-1.0.0-hadoop1
 
 WORKDIR $TITAN_HOME
 
-ADD audrey.properties $TITAN_HOME/conf/audrey.properties
-
 EXPOSE 8182
 EXPOSE 8183
 EXPOSE 8184
 
-CMD ["/bin/bash", "bin/gremlin-server.sh"]
+CMD ["/bin/bash", "bin/gremlin.sh"]

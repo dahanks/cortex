@@ -10,11 +10,21 @@ build:
 
 run:
 	docker run -d \
-	--name cortex-titan \
+	--name neuron \
 	-p 8182:8182 \
 	--link cs1 \
 	--link es1 \
+	--link ccd-apollo \
 	$(IMAGE):$(VERSION)
+
+shell:
+	docker run -it \
+	--name gremlin \
+	-p 8182:8182 \
+	--link cs1 \
+	--link es1 \
+	$(IMAGE):$(VERSION) \
+	/bin/bash
 
 update:
 	docker pull $(FROM_IMAGE)
