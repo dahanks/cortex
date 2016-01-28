@@ -51,12 +51,13 @@ public class Neuron {
 
     public StompConnection connection;
     public graph;
+    public g;
 
     public Neuron() { };
 
     public void initialize() throws Exception {
         graph = TitanFactory.open(AUDREY_CONF_PATH);
-
+        g = graph.traversal();
         connection = new StompConnection();
         connection.open(APOLLO_HOSTNAME, APOLLO_PORT);
         connection.connect(APOLLO_USERNAME, APOLLO_PASSWORD);
@@ -65,10 +66,17 @@ public class Neuron {
 
     public void onMessage(StompFrame frame) throws NeuronException {
         //TODO: move all this checking out into a verify() function
-        def parser = new JsonSlurper();
-        def message = parser.parseText(frame.getBody());
-        graph.addVertex("name", message['operation']);
-        def g = graph.traversal();
+        try {
+            def parser = new JsonSlurper();
+            def message = parser.parseText(frame.getBody());
+            println g.V();
+            graph.addVertex("name", message['operation']);
+            println g.V();
+        } catch (JsonException e) {
+            logging.warn("Neuron could not parse a JSON message it received");
+        }
+        //graph.addVertex("name", message['operation']);
+        //def g = graph.traversal();
         // JSONParser parser = new JSONParser();
         // JSONObject message;
         // try {
@@ -79,8 +87,6 @@ public class Neuron {
         //         throw new NeuronOperationException("Neuron received a valid JSON message without 'operation' field");
         //     }
         // } catch (ParseException e) {
-        //     logging.warn("Neuron could not parse a JSON message it received");
-        //     e.printStackTrace();
         // }
     }
 
