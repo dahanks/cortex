@@ -120,6 +120,9 @@
 	<classpathentry kind="var" path="M2_REPO/org/ow2/asm/asm-commons/4.1/asm-commons-4.1.jar"/>
 	<classpathentry kind="var" path="M2_REPO/org/antlr/stringtemplate/3.2/stringtemplate-3.2.jar"/>
 	<classpathentry kind="var" path="M2_REPO/antlr/antlr/2.7.7/antlr-2.7.7.jar"/>
+	<classpathentry kind="var" path="M2_REPO/com/tinkerpop/gremlin/gremlin-java/2.6.0/gremlin-java-2.6.0.jar"/>
+	<classpathentry kind="var" path="M2_REPO/com/tinkerpop/blueprints/blueprints-core/2.6.0/blueprints-core-2.6.0.jar"/>
+	<classpathentry kind="var" path="M2_REPO/com/tinkerpop/pipes/2.6.0/pipes-2.6.0.jar"/>
 	<classpathentry kind="var" path="M2_REPO/org/apache/activemq/activemq-all/5.13.0/activemq-all-5.13.0.jar"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>

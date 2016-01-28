@@ -12,13 +12,17 @@ import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.log4j.Logger;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversalSource;
+import org.apache.tinkerpop.gremlin.structure.T;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
+import org.apache.tinkerpop.gremlin.tinkergraph.structure.TinkerVertex;
 
 import com.thinkaurelius.titan.core.TitanEdge;
 import com.thinkaurelius.titan.core.TitanGraph;
 import com.thinkaurelius.titan.core.TitanFactory;
 import com.thinkaurelius.titan.core.TitanTransaction;
 import com.thinkaurelius.titan.core.TitanVertex;
+import com.tinkerpop.blueprints.impls.tg.TinkerGraph;
+import com.tinkerpop.gremlin.java.GremlinPipeline;
 
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
@@ -28,9 +32,12 @@ import org.json.simple.parser.ParseException;
 public class Neuron {
     public static final Logger logging = Logger.getRootLogger();
 
-    private static final String NEURON_HOME = System.getenv("NEURON_HOME");
-    private static final String AUDREY_CONF_PATH = NEURON_HOME + "/conf/audrey.properties";
-    private static final String APOLLO_HOSTNAME = "cortex-apollo";
+    //private static final String NEURON_HOME = System.getenv("NEURON_HOME");
+    //private static final String AUDREY_CONF_PATH = NEURON_HOME + "/conf/audrey.properties";
+    private static final String AUDREY_CONF_PATH = "local.properties";
+
+    private static final String APOLLO_HOSTNAME = "localhost";
+    //private static final String APOLLO_HOSTNAME = "cortex-apollo";
     private static final int APOLLO_PORT = 61613;
     private static final String APOLLO_USERNAME = "admin";
     private static final String APOLLO_PASSWORD = "password";
@@ -114,7 +121,7 @@ public class Neuron {
             }
             switch (operation.get(OPERATION_FUNCTION).toString()) {
             case FUNCTION_ADDVERTEX:
-                addVertex(operation);
+                addVertexGremlin(operation);
                 break;
             case FUNCTION_ADDEDGE:
                 addEdge(operation);
@@ -152,6 +159,15 @@ public class Neuron {
         }
         logging.debug("Adding Vertex");
         graph.tx().commit();
+    }
+
+    private void addVertexGremlin(JSONObject operation) {
+        logging.debug("Adding Vertex");
+        GremlinPipeline pipe = new GremlinPipeline();
+        TinkerGraph tinker = new TinkerGraph("local.properties");
+        tinker.addVertex("david");
+        //pipe.start(tinker.addVertex("david"));
+        //pipe.start(tinker).
     }
 
     private void addEdge(JSONObject operation) throws NeuronOperationException {
@@ -202,7 +218,7 @@ public class Neuron {
         }
         return vertices;
     }
-    
+
     private void run() throws Exception {
         while (true) {
             try {
@@ -223,7 +239,8 @@ public class Neuron {
         Neuron neuron = new Neuron();
         try {
             neuron.initialize();
-            neuron.run();
+            neuron.addVertexGremlin(null);
+            //neuron.run();
         } catch (Throwable t) {
             t.printStackTrace();
         } finally {
