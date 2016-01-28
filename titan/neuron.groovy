@@ -36,10 +36,47 @@ public class Neuron {
         try {
             def parser = new JsonSlurper();
             def message = parser.parseText(frame.getBody());
-            def gremlin_function = message['gremlin_function'];
-            println graph."$gremlin_function"("name","david");
-            println g.V().values("name").next();
-            //graph.addVertex("name", message['operation']);
+            def api = message['api'];
+            for (statement in message['statements']) {
+                def fxns = statement['fxns'];
+                if (fxns.size() == 1) {
+                    if (api == "blueprints") {
+                        println graph."${fxns[0]['fxn']}"(*fxns[0]['args']);
+                    } else if (api == "gremlin") {
+                        println g."${fxns[0]['fxn']}"(*fxns[0]['args']);
+                    }
+                } else if (fxns.size() == 2) {
+                    if (api == "blueprints") {
+                        println graph."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args']);
+                    } else if (api == "gremlin") {
+                        println g."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args']);
+                    }
+                } else if (fxns.size() == 3) {
+                    if (api == "blueprints") {
+                        println graph."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args'])."${fxns[2]['fxn']}"(*fxns[2]['args']);
+                    } else if (api == "gremlin") {
+                        println g."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args'])."${fxns[2]['fxn']}"(*fxns[2]['args']);
+                    }
+                } else if (fxns.size() == 4) {
+
+                } else if (fxns.size() == 5) {
+
+                } else if (fxns.size() == 6) {
+
+                } else if (fxns.size() == 7) {
+
+                } else if (fxns.size() == 8) {
+
+                } else if (fxns.size() == 9) {
+
+                } else if (fxns.size() == 10) {
+
+                } else if (fxns.size() < -1) {
+                    logging.warn("Received Gremlin operation with no function calls");
+                } else if (fxns.size() > 10) {
+                    logging.warn("Neuron can not process Gremlin operations with greater than 10 linked calls");
+                }
+            }
         } catch (JsonException e) {
             logging.warn("Neuron received invalid JSON message");
         } catch (Exception e) {
