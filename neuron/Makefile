@@ -3,6 +3,7 @@
 IMAGE=cortex-neuron
 VERSION=1.0.0
 FROM_IMAGE=$(shell grep FROM Dockerfile | cut -d " " -f 2)
+CONTAINER=neuron
 
 build:
 	docker build -t $(IMAGE) .
@@ -10,7 +11,7 @@ build:
 
 run:
 	docker run -d \
-	--name $(IMAGE) \
+	--name $(CONTAINER) \
 	--link cortex-cassandra \
 	--link cortex-elasticsearch \
 	--link cortex-apollo \
@@ -18,14 +19,14 @@ run:
 
 shell:
 	docker run -it \
-	--name $(IMAGE) \
+	--name $(CONTAINER) \
 	--link cortex-cassandra \
 	--link cortex-elasticsearch \
 	$(IMAGE):$(VERSION) \
 	/bin/bash
 
 clean:
-	docker rm -f $(IMAGE)
+	docker rm -f $(CONTAINER)
 
 update:
 	docker pull $(FROM_IMAGE)
