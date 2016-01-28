@@ -10,14 +10,9 @@ build:
 
 run:
 	docker run -d \
-	--name cortex-apollo \
-	$(IMAGE):$(VERSION)
-
-local:
-	docker run -d \
 	-p 61613:61613 \
 	-p 61623:61623 \
-	--name apollo \
+	--name cortex-apollo \
 	$(IMAGE):$(VERSION)
 
 clean:
