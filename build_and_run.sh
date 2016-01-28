@@ -16,7 +16,12 @@ make && make run
 popd
 
 #Maven
-pushd maven/
+#pushd maven/
+#make
+#popd
+
+#Titan
+pushd titan/
 make
 popd
 
