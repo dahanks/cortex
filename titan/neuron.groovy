@@ -4,15 +4,6 @@ import org.apache.activemq.transport.stomp.Stomp.Headers.Subscribe;
 import org.apache.activemq.transport.stomp.StompConnection;
 import org.apache.activemq.transport.stomp.StompFrame;
 
-public class NeuronException extends Exception {
-    private static final long serialVersionUID = 1L;
-
-    public NeuronException() { super(); }
-    public NeuronException(String message) { super(message); }
-    public NeuronException(String message, Throwable cause) { super(message, cause); }
-    public NeuronException(Throwable cause) { super(cause); }
-}
-
 public class Neuron {
     public static final Logger logging = Logger.getRootLogger();
 
@@ -25,15 +16,6 @@ public class Neuron {
     public static final String APOLLO_USERNAME = "admin";
     public static final String APOLLO_PASSWORD = "password";
     public static final String INPUT_DESTINATION = "/queue/neuron.operation";
-
-    public static final String NEURON_OPERATION = "operation";
-    //public static final String OPERATION_FUNCTION = "function";
-    //public static final String FUNCTION_ADDVERTEX = "addVertex";
-    //public static final String FUNCTION_ADDEDGE = "addEdge";
-    //public static final String FUNCTION_ADDPROPERTY = "addProperty";
-    //public static final String FUNCTION_ADDEDGE_TO = "to";
-    //public static final String FUNCTION_ADDEDGE_FROM = "from";
-    //public static final String FUNCTION_ADDEDGE_LABEL = "label";
 
     public StompConnection connection;
     public graph;
@@ -50,13 +32,12 @@ public class Neuron {
         connection.subscribe(INPUT_DESTINATION, Subscribe.AckModeValues.CLIENT);
     }
 
-    public void onMessage(StompFrame frame) throws NeuronException {
-        //TODO: move all this checking out into a verify() function
+    public void onMessage(StompFrame frame) {
         try {
             def parser = new JsonSlurper();
             def message = parser.parseText(frame.getBody());
-            def operation = message['operation'];
-            println graph."$operation"("name","david");
+            def gremlin_function = message['gremlin_function'];
+            println graph."$gremlin_function"("name","david");
             println g.V().values("name").next();
             //graph.addVertex("name", message['operation']);
         } catch (JsonException e) {
@@ -64,21 +45,20 @@ public class Neuron {
         } catch (Exception e) {
             e.printStackTrace();
             logging.warn("Neuron failed to run operation; probably invalid Gremlin");
+        } finally {
+            connection.ack(frame);
         }
     }
 
-    public void run() throws Exception {
+    public void run() {
         while (true) {
             try {
                 StompFrame frame = connection.receive();
                 onMessage(frame);
-                connection.ack(frame);
+                //acking is done inside the above method
             } catch (SocketTimeoutException e) {
                 //timeouts are not fatal
                 logging.warn("Timeout on connection to Apollo.  Trying again (infinitely)...");
-            } catch (NeuronException e) {
-                //malformed messages are not fatal
-                e.printStackTrace();
             }
         }
     }
@@ -87,4 +67,3 @@ public class Neuron {
 neuron = new Neuron();
 neuron.initialize();
 neuron.run();
-k
