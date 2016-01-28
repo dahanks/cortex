@@ -49,8 +49,8 @@ public class Neuron {
     //public static final String FUNCTION_ADDEDGE_FROM = "from";
     //public static final String FUNCTION_ADDEDGE_LABEL = "label";
 
-    public graph;
     public StompConnection connection;
+    public graph;
 
     public Neuron() { };
 
@@ -65,19 +65,23 @@ public class Neuron {
 
     public void onMessage(StompFrame frame) throws NeuronException {
         //TODO: move all this checking out into a verify() function
-        JSONParser parser = new JSONParser();
-        JSONObject message;
-        try {
-            message = (JSONObject) parser.parse(frame.getBody());
-            if (message.containsKey(NEURON_OPERATION)) {
-                runOperation(message);
-            } else {
-                throw new NeuronOperationException("Neuron received a valid JSON message without 'operation' field");
-            }
-        } catch (ParseException e) {
-            logging.warn("Neuron could not parse a JSON message it received");
-            e.printStackTrace();
-        }
+        def parser = new JsonSlurper();
+        def message = parser.parseText(frame.getBody());
+        graph.addVertex("name", message['operation']);
+        def g = graph.traversal();
+        // JSONParser parser = new JSONParser();
+        // JSONObject message;
+        // try {
+        //     message = (JSONObject) parser.parse(frame.getBody());
+        //     if (message.containsKey(NEURON_OPERATION)) {
+        //         runOperation(message);
+        //     } else {
+        //         throw new NeuronOperationException("Neuron received a valid JSON message without 'operation' field");
+        //     }
+        // } catch (ParseException e) {
+        //     logging.warn("Neuron could not parse a JSON message it received");
+        //     e.printStackTrace();
+        // }
     }
 
     public void runOperation(JSONObject message) throws NeuronOperationException {
