@@ -1,4 +1,4 @@
-FROM cortex-maven
+FROM isuper/java-oracle:jdk_8
 
 RUN apt-get update && apt-get install unzip
 
@@ -9,12 +9,6 @@ RUN unzip /opt/titan.zip -d /opt/ && \
 
 ENV TITAN_HOME /opt/titan-1.0.0-hadoop1
 
-ADD audrey.properties $TITAN_HOME/conf/audrey.properties
-
 WORKDIR $TITAN_HOME
-
-EXPOSE 8182
-EXPOSE 8183
-EXPOSE 8184
 
 CMD ["/bin/bash", "bin/gremlin.sh"]
