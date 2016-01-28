@@ -4,11 +4,6 @@ import org.apache.activemq.transport.stomp.Stomp.Headers.Subscribe;
 import org.apache.activemq.transport.stomp.StompConnection;
 import org.apache.activemq.transport.stomp.StompFrame;
 
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
-
 public class NeuronException extends Exception {
     private static final long serialVersionUID = 1L;
 
@@ -16,15 +11,6 @@ public class NeuronException extends Exception {
     public NeuronException(String message) { super(message); }
     public NeuronException(String message, Throwable cause) { super(message, cause); }
     public NeuronException(Throwable cause) { super(cause); }
-}
-
-public class NeuronOperationException extends NeuronException {
-    private static final long serialVersionUID = 1L;
-
-    public NeuronOperationException() { super(); }
-    public NeuronOperationException(String message) { super(message); }
-    public NeuronOperationException(String message, Throwable cause) { super(message, cause); }
-    public NeuronOperationException(Throwable cause) { super(cause); }
 }
 
 public class Neuron {
@@ -69,35 +55,16 @@ public class Neuron {
         try {
             def parser = new JsonSlurper();
             def message = parser.parseText(frame.getBody());
-            println g.V();
-            graph.addVertex("name", message['operation']);
-            println g.V();
+            def operation = message['operation'];
+            println graph."$operation"("name","david");
+            println g.V().values("name").next();
+            //graph.addVertex("name", message['operation']);
         } catch (JsonException e) {
-            logging.warn("Neuron could not parse a JSON message it received");
+            logging.warn("Neuron received invalid JSON message");
+        } catch (Exception e) {
+            e.printStackTrace();
+            logging.warn("Neuron failed to run operation; probably invalid Gremlin");
         }
-        //graph.addVertex("name", message['operation']);
-        //def g = graph.traversal();
-        // JSONParser parser = new JSONParser();
-        // JSONObject message;
-        // try {
-        //     message = (JSONObject) parser.parse(frame.getBody());
-        //     if (message.containsKey(NEURON_OPERATION)) {
-        //         runOperation(message);
-        //     } else {
-        //         throw new NeuronOperationException("Neuron received a valid JSON message without 'operation' field");
-        //     }
-        // } catch (ParseException e) {
-        // }
-    }
-
-    public void runOperation(JSONObject message) throws NeuronOperationException {
-        //TODO: move all this checking out into a verify() function
-        //if (message.get("operation") instanceof JSONArray) {
-        //    parseOperations((JSONArray)message.get("operation"));
-        //} else {
-        //    throw new NeuronOperationException("Neuron received operation that was not a JSON Array");
-        //}
-        println message;
     }
 
     public void run() throws Exception {
@@ -118,13 +85,6 @@ public class Neuron {
 }
 
 neuron = new Neuron();
-try {
-    neuron.initialize();
-    neuron.run();
-} catch (Throwable t) {
-    t.printStackTrace();
-} finally {
-    neuron.finalize();
-    //make sure we exit hard here; seen some weird behavior with Java in Docker
-    System.exit(0);
-}
+neuron.initialize();
+neuron.run();
+k
