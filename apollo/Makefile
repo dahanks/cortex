@@ -10,10 +10,19 @@ build:
 
 run:
 	docker run -d \
-	-p 61613:61613 \
-	-p 61623:61623 \
 	--name cortex-apollo \
 	$(IMAGE):$(VERSION)
+
+local:
+	docker run -d \
+	-p 61613:61613 \
+	-p 61623:61623 \
+	--name apollo \
+	$(IMAGE):$(VERSION)
+
+clean:
+	docker rm -f cortex-apollo || \
+	docker rm -f apollo
 
 update:
 	docker pull $(FROM_IMAGE)
