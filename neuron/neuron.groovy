@@ -32,7 +32,8 @@ public class Neuron {
         connection.subscribe(INPUT_DESTINATION, Subscribe.AckModeValues.CLIENT);
     }
 
-    public executeStatement(statement, api) {
+    public executeStatement(statement) {
+        def api = statement['api'];
         if (statement['fxns'].size() < 1) {
             logging.warn("Received Neuron statement with no function calls");
             return [];
@@ -51,17 +52,11 @@ public class Neuron {
         } else {
             def fxn = fxns[0];
             if (fxn['fxn'] == "addEdge") {
-                if (fxn['args'].size() < 6) {
-                    logging.warn("Improperly formatted addEdge call");
-                }
-                def fromHas = fxn['args'][1];
-                def fromValue = fxn['args'][2];
-                def toHas = fxn['args'][3];
-                def toValue = fxn['args'][4];
-                def label = fxn['args'][5];
-                def fromVertex = g.V().has(fromHas, fromValue).next();
-                def toVertex = g.V().has(toHas, toValue).next();
-                return fromVertex.addEdge(label, toVertex);
+                def fromVertex = executeGremlinStatement(fxn['fromVertex']);
+                def toVertex = executeGremlinStatement(fxn['toVertex']);
+                def label = fxn['label']
+                def args = fxn['args'];
+                return fromVertex.addEdge(label, toVertex, *args);
             } else {
                 return graph."${fxns[0]['fxn']}"(*fxns[0]['args']);
             }
@@ -99,9 +94,8 @@ public class Neuron {
         try {
             def parser = new JsonSlurper();
             def message = parser.parseText(frame.getBody());
-            def api = message['api'];
             for (statement in message['statements']) {
-                def result = executeStatement(statement, api);
+                def result = executeStatement(statement);
                 println result;
                 g.tx().commit();
             }
