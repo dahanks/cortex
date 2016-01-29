@@ -18,11 +18,14 @@ class WetwareWorker(Worker):
         message = json.loads(frame.body)
         ############## End header ##############
 
-        #TODO: do you want to let them mix statements later?
+        #TODO throw out replies in the super class
         if frame.headers['destination'] == self.args['neuron_topic']:
-            self.publish_neuron_operation(message)
-        else:
-            raise WetwareException("Message came on unhandled topic")
+            self.process_neuron_operation(message)
+        elif frame.headers['destination'] == self.args['nlp_topic']:
+            self.process_nlp_operation(message)
+
+    def process_nlp_operation(message):
+        words = message.split(' ')
 
     def compose_standard_statement(self, statement):
         output_statement = {'fxns': []}
@@ -47,7 +50,7 @@ class WetwareWorker(Worker):
                 output_statement['fxns'].append(output_function)
         return output_statement
 
-    def publish_neuron_operation(self, input_message):
+    def process_neuron_operation(self, input_message):
         output_data = { 'statements': []}
         for raw_statement in input_message['statements']:
             if "addVertex" in raw_statement or 'addEdge' in raw_statement:
@@ -55,7 +58,7 @@ class WetwareWorker(Worker):
             else:
                 output_data['statements'].append(self.compose_gremlin_statement(raw_statement))
         logging.debug(output_data)
-        self.publish(output_data)
+        self.publish(output_data, expect_reply=True)
 
     def compose_addedge_statement(self, raw_statement):
         #when neuron sees it's blueprints, it will check if fxn is addEdge
@@ -104,6 +107,9 @@ class WetwareWorker(Worker):
         statement['api'] = 'gremlin'
         return statement
 
+    def handle_reply(self, frame):
+        logging.info(frame)
+
     def define_default_args(self):
         ### This header must not be modified ###
         defaults = super(WetwareWorker, self).define_default_args()
@@ -129,9 +135,14 @@ class WetwareWorker(Worker):
         message = json.loads(frame.body)
         ############## End header ##############
 
-        for key in ['statements']:
-            if key not in message:
-                raise FrameException("Message has no {0} field".format(key))
+        if frame.headers['destination'].startswith('/queue/temp'):
+            for key in ['responses']:
+                if key not in message:
+                    raise FrameException("Message has no {0} field".format(key))
+        else :
+            for key in ['statements']:
+                if key not in message:
+                    raise FrameException("Message has no {0} field".format(key))
 
 class WetwareException(WorkerException):
     pass
