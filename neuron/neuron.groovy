@@ -33,55 +33,65 @@ public class Neuron {
     }
 
     public executeStatement(statement, api) {
-        def fxns = statement['fxns'];
-        if (fxns.size() < -1) {
-            logging.warn("Received Gremlin operation with no function calls");
+        if (statement['fxns'].size() < 1) {
+            logging.warn("Received Neuron statement with no function calls");
+            return [];
         } else if (api == "blueprints") {
-            if (fxns.size() > 1) {
-                logging.warn("Neuron can currently only process one Blueprints function at a time");
-                return [];
-            } else {
-                def fxn = fxns[0];
-                if (fxn['fxn'] == "addEdge") {
-                    if (fxn['args'].size() < 6) {
-                        logging.warn("Improperly formatted addEdge call");
-                    }
-                    def fromHas = fxn['args'][1];
-                    def fromValue = fxn['args'][2];
-                    def toHas = fxn['args'][3];
-                    def toValue = fxn['args'][4];
-                    def label = fxn['args'][5];
-                    def fromVertex = g.V().has(fromHas, fromValue).next();
-                    def toVertex = g.V().has(toHas, toValue).next();
-                    return fromVertex.addEdge(label, toVertex);
-                } else {
-                    return graph."${fxns[0]['fxn']}"(*fxns[0]['args']);
-                }
-            }
+            return executeBlueprintsStatement(statement);
         } else if (api == "gremlin") {
-            if (fxns.size() > 10) {
-                logging.warn("Neuron can not process Gremlin operations with greater than 10 linked calls");
-            } else if (fxns.size() == 1) {
-                return g."${fxns[0]['fxn']}"(*fxns[0]['args']);
-            } else if (fxns.size() == 2) {
-                return g."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args']);
-            } else if (fxns.size() == 3) {
-                return g."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args'])."${fxns[2]['fxn']}"(*fxns[2]['args']);
-            } else if (fxns.size() == 4) {
-                return g."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args'])."${fxns[2]['fxn']}"(*fxns[2]['args'])."${fxns[3]['fxn']}"(*fxns[3]['args']);
-            } else if (fxns.size() == 5) {
-                return g."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args'])."${fxns[2]['fxn']}"(*fxns[2]['args'])."${fxns[3]['fxn']}"(*fxns[3]['args'])."${fxns[4]['fxn']}"(*fxns[4]['args']);
-            } else if (fxns.size() == 6) {
-                return g."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args'])."${fxns[2]['fxn']}"(*fxns[2]['args'])."${fxns[3]['fxn']}"(*fxns[3]['args'])."${fxns[4]['fxn']}"(*fxns[4]['args'])."${fxns[5]['fxn']}"(*fxns[5]['args']);
-            } else if (fxns.size() == 7) {
-                return g."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args'])."${fxns[2]['fxn']}"(*fxns[2]['args'])."${fxns[3]['fxn']}"(*fxns[3]['args'])."${fxns[4]['fxn']}"(*fxns[4]['args'])."${fxns[5]['fxn']}"(*fxns[5]['args'])."${fxns[6]['fxn']}"(*fxns[6]['args']);
-            } else if (fxns.size() == 8) {
-                return g."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args'])."${fxns[2]['fxn']}"(*fxns[2]['args'])."${fxns[3]['fxn']}"(*fxns[3]['args'])."${fxns[4]['fxn']}"(*fxns[4]['args'])."${fxns[5]['fxn']}"(*fxns[5]['args'])."${fxns[6]['fxn']}"(*fxns[6]['args'])."${fxns[7]['fxn']}"(*fxns[7]['args']);
-            } else if (fxns.size() == 9) {
-                return g."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args'])."${fxns[2]['fxn']}"(*fxns[2]['args'])."${fxns[3]['fxn']}"(*fxns[3]['args'])."${fxns[4]['fxn']}"(*fxns[4]['args'])."${fxns[5]['fxn']}"(*fxns[5]['args'])."${fxns[6]['fxn']}"(*fxns[6]['args'])."${fxns[7]['fxn']}"(*fxns[7]['args'])."${fxns[8]['fxn']}"(*fxns[8]['args']);
-            } else if (fxns.size() == 10) {
-                return g."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args'])."${fxns[2]['fxn']}"(*fxns[2]['args'])."${fxns[3]['fxn']}"(*fxns[3]['args'])."${fxns[4]['fxn']}"(*fxns[4]['args'])."${fxns[5]['fxn']}"(*fxns[5]['args'])."${fxns[6]['fxn']}"(*fxns[6]['args'])."${fxns[7]['fxn']}"(*fxns[7]['args'])."${fxns[8]['fxn']}"(*fxns[8]['args'])."${fxns[9]['fxn']}"(*fxns[9]['args']);
+            return executeGremlinStatement(statement);
+        }
+    }
+
+    public executeBlueprintsStatement(statement) {
+        def fxns = statement['fxns'];
+        if (fxns.size() > 1) {
+            logging.warn("Neuron can currently only process one Blueprints function at a time");
+            return [];
+        } else {
+            def fxn = fxns[0];
+            if (fxn['fxn'] == "addEdge") {
+                if (fxn['args'].size() < 6) {
+                    logging.warn("Improperly formatted addEdge call");
+                }
+                def fromHas = fxn['args'][1];
+                def fromValue = fxn['args'][2];
+                def toHas = fxn['args'][3];
+                def toValue = fxn['args'][4];
+                def label = fxn['args'][5];
+                def fromVertex = g.V().has(fromHas, fromValue).next();
+                def toVertex = g.V().has(toHas, toValue).next();
+                return fromVertex.addEdge(label, toVertex);
+            } else {
+                return graph."${fxns[0]['fxn']}"(*fxns[0]['args']);
             }
+        }
+    }
+
+    public executeGremlinStatement(statement) {
+        def fxns = statement['fxns'];
+        if (fxns.size() > 10) {
+            logging.warn("Neuron can not process Gremlin operations with greater than 10 linked calls");
+        } else if (fxns.size() == 1) {
+            return g."${fxns[0]['fxn']}"(*fxns[0]['args']);
+        } else if (fxns.size() == 2) {
+            return g."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args']);
+        } else if (fxns.size() == 3) {
+            return g."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args'])."${fxns[2]['fxn']}"(*fxns[2]['args']);
+        } else if (fxns.size() == 4) {
+            return g."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args'])."${fxns[2]['fxn']}"(*fxns[2]['args'])."${fxns[3]['fxn']}"(*fxns[3]['args']);
+        } else if (fxns.size() == 5) {
+            return g."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args'])."${fxns[2]['fxn']}"(*fxns[2]['args'])."${fxns[3]['fxn']}"(*fxns[3]['args'])."${fxns[4]['fxn']}"(*fxns[4]['args']);
+        } else if (fxns.size() == 6) {
+            return g."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args'])."${fxns[2]['fxn']}"(*fxns[2]['args'])."${fxns[3]['fxn']}"(*fxns[3]['args'])."${fxns[4]['fxn']}"(*fxns[4]['args'])."${fxns[5]['fxn']}"(*fxns[5]['args']);
+        } else if (fxns.size() == 7) {
+            return g."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args'])."${fxns[2]['fxn']}"(*fxns[2]['args'])."${fxns[3]['fxn']}"(*fxns[3]['args'])."${fxns[4]['fxn']}"(*fxns[4]['args'])."${fxns[5]['fxn']}"(*fxns[5]['args'])."${fxns[6]['fxn']}"(*fxns[6]['args']);
+        } else if (fxns.size() == 8) {
+            return g."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args'])."${fxns[2]['fxn']}"(*fxns[2]['args'])."${fxns[3]['fxn']}"(*fxns[3]['args'])."${fxns[4]['fxn']}"(*fxns[4]['args'])."${fxns[5]['fxn']}"(*fxns[5]['args'])."${fxns[6]['fxn']}"(*fxns[6]['args'])."${fxns[7]['fxn']}"(*fxns[7]['args']);
+        } else if (fxns.size() == 9) {
+            return g."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args'])."${fxns[2]['fxn']}"(*fxns[2]['args'])."${fxns[3]['fxn']}"(*fxns[3]['args'])."${fxns[4]['fxn']}"(*fxns[4]['args'])."${fxns[5]['fxn']}"(*fxns[5]['args'])."${fxns[6]['fxn']}"(*fxns[6]['args'])."${fxns[7]['fxn']}"(*fxns[7]['args'])."${fxns[8]['fxn']}"(*fxns[8]['args']);
+        } else if (fxns.size() == 10) {
+            return g."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args'])."${fxns[2]['fxn']}"(*fxns[2]['args'])."${fxns[3]['fxn']}"(*fxns[3]['args'])."${fxns[4]['fxn']}"(*fxns[4]['args'])."${fxns[5]['fxn']}"(*fxns[5]['args'])."${fxns[6]['fxn']}"(*fxns[6]['args'])."${fxns[7]['fxn']}"(*fxns[7]['args'])."${fxns[8]['fxn']}"(*fxns[8]['args'])."${fxns[9]['fxn']}"(*fxns[9]['args']);
         }
     }
 
