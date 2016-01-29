@@ -21,6 +21,8 @@ public class Neuron {
     public graph;
     public g;
 
+    public reply_topics = [];
+
     public Neuron() { };
 
     public void initialize() throws Exception {
@@ -91,21 +93,33 @@ public class Neuron {
     }
 
     public void onMessage(StompFrame frame) {
+        if (frame.headers.containsKey('reply-to')) {
+            //NOTE: pop comes from the end, so we're inserting at the front
+            reply_topics.putAt(0, frame.headers['reply-to']);
+        }
         try {
+            connection.ack(frame);
             def parser = new JsonSlurper();
             def message = parser.parseText(frame.getBody());
+            def reply = ["responses": []];
             for (statement in message['statements']) {
                 def result = executeStatement(statement);
                 println result;
+                reply["responses"].add(result.toString());
                 g.tx().commit();
+            }
+            if (reply_topics.size() > 0) {
+                //NOTE: pop comes from the end, so we're inserting at the front
+                def dest = reply_topics.pop();
+                println "Sending reply:";
+                println reply;
+                connection.send(dest, new JsonBuilder(reply).toString());
             }
         } catch (JsonException e) {
             logging.warn("Neuron received invalid JSON message");
         } catch (Exception e) {
             e.printStackTrace();
             logging.warn("Neuron failed to run operation; probably invalid Gremlin");
-        } finally {
-            connection.ack(frame);
         }
     }
 
