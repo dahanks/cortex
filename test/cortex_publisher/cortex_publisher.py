@@ -12,52 +12,71 @@ class PublisherWorker(Worker):
 
     def run(self):
         with ApolloConnection(self.args) as self.apollo_conn:
-            data = { 'api': 'blueprints',
-                     'statements': [
-                         {
-                             'fxns': [
-                                 {
-                                     'fxn': 'addVertex',
-                                     'args': ['name', 'david']
-                                 }
-                             ]
-                         },
-                         {
-                             'fxns': [
-                                 {
-                                     'fxn': 'addVertex',
-                                     'args': ['name', 'lorna']
-                                 }
-                             ]
-                         }
-                     ]
-            }
-            self.publish(data, expect_reply=self.args['expect_reply'])
-            time.sleep(3)
+            self.sendStatements()
 
-            data = { 'api': 'gremlin',
-                     'statements': [
-                         {
-                             'fxns': [
-                                 { 'fxn': 'V', 'args': [] },
-                                 { 'fxn': 'values', 'args': ["name"] },
-                                 { 'fxn': 'toList', 'args': [] },
-                             ]
-                         }
-                     ]
-            }
-            self.publish(data, expect_reply=self.args['expect_reply'])
-            time.sleep(3)
+    def sendStatements(self):
+        data = { 'statements': [
+            'g.V().toList()',
+            'g.E().toList()',
+#            'graph.addVertex("name","other1", "isfirst", "yes")',
+#            'graph.addVertex("name","other2", "isfirst", "no")',
+#            'g.V().has("name").properties().toList()'
+#            'g.V().has("name","other1").next().addEdge("goesTo", g.V().has("name","other2").next(), "iscooledge", "totally", "isreallycool", "absolutely")',
+#            'g.V().has("name","other1").next().addEdge("goesTo", g.V().has("name","other2").next())',
+#            'graph.addEdge("comesBefore","name","first", "name","last", "iscool", "yes")',
+#            'g.V.addEdge("comesBefore","name","first", "name","last", "iscool", "yes")',
+        ] }
+        self.publish(data, '/topic/wetware.neuron', expect_reply=self.args['expect_reply'])
 
-            # while True:
-            #     self.publish(data, expect_reply=self.args['expect_reply'])
-            #     if self.args['expect_reply']:
-            #         while True:
-            #             frame = self.apollo_conn.receiveFrame()
-            #             logging.info("Received message: {0}".format(frame.info()))
-            #             self.on_message(frame)
-            #     time.sleep(5)
+    def neuronAddVertex(self):
+        data = { 'api': 'blueprints',
+                 'statements': [
+                     {
+                         'fxns': [
+                             {
+                                 'fxn': 'addVertex',
+                                 'args': ['name', 'david']
+                             }
+                         ]
+                     },
+                     {
+                         'fxns': [
+                             {
+                                 'fxn': 'addVertex',
+                                 'args': ['name', 'lorna']
+                             }
+                         ]
+                     }
+                 ]
+             }
+        self.publish(data, '/queue/neuron.operation', expect_reply=self.args['expect_reply'])
 
+    def neuronAddEdge(self):
+        data = { 'api': 'blueprints',
+                 'statements': [
+                     {
+                         'fxns': [
+                             {
+                                 'fxn': 'addVertex',
+                                 #this is a statement
+                                 'fromVertex': {
+                                     'fxns': [
+                                         {
+                                             'fxn': 'V',
+                                             'args': []
+                                         },
+                                         {
+                                             #not actually completed...just for show
+                                         },
+                                     ]
+                                 },
+                                 'args': ['name', 'david']
+                             }
+                         ]
+                     },
+                 ]
+             }
+        self.publish(data, '/queue/neuron.operation', expect_reply=self.args['expect_reply'])
 
     def handle_reply(self, frame):
         print json.dumps(json.loads(frame.body), sort_keys=True, indent=4, separators=(',', ': '))
