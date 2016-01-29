@@ -24,34 +24,28 @@ class WetwareWorker(Worker):
         else:
             raise WetwareException("Message came on unhandled topic")
 
-    def compose_addEdge_statement(self, statement):
-        #format: Vertex.addEdge(label, Vertex, key, value, ... )
-        output_statement = {'fxns': []}
-        fxn = "addEdge"
-        fromGremlin = statement.split('addEdge')[0]
-
     def compose_standard_statement(self, statement):
-            output_statement = {'fxns': []}
-            for input_function in statement.split('.'):
-                #these are the Tinker/TitanGraphs or traversal()
-                # their usage is hardcoded at neuron
-                if input_function == 'graph' or input_function == 'g':
-                    continue
-                else:
-                    function_name = input_function.split('(')[0]
-                    arguments = []
-                    for argument in input_function.split('(')[1].split(')')[0].split(','):
-                        #don't put in empty strings
-                        if argument:
-                            #strip whitespace, and strip quotes (on each side)
-                            # there would be a problem here is quotes weren't there
-                            arguments.append(argument.strip()[1:-1])
-                    output_function = {
-                        'fxn': function_name,
-                        'args': arguments
-                    }
-                    output_statement['fxns'].append(output_function)
-            return output_statement
+        output_statement = {'fxns': []}
+        for input_function in statement.split('.'):
+            #these are the Tinker/TitanGraphs or traversal()
+            # their usage is hardcoded at neuron
+            if input_function == 'graph' or input_function == 'g':
+                continue
+            else:
+                function_name = input_function.split('(')[0]
+                arguments = []
+                for argument in input_function.split('(')[1].split(')')[0].split(','):
+                    #don't put in empty strings
+                    if argument:
+                        #strip whitespace, and strip quotes (on each side)
+                        # there would be a problem here is quotes weren't there
+                        arguments.append(argument.strip()[1:-1])
+                output_function = {
+                    'fxn': function_name,
+                    'args': arguments
+                }
+                output_statement['fxns'].append(output_function)
+        return output_statement
 
     def publish_neuron_operation(self, input_message):
         output_data = { 'statements': []}
@@ -63,10 +57,42 @@ class WetwareWorker(Worker):
         logging.debug(output_data)
         self.publish(output_data)
 
+    def compose_addedge_statement(self, raw_statement):
+        #when neuron sees it's blueprints, it will check if fxn is addEdge
+        # and handle this different api accordingly
+        output_statement = {'fxns': []}
+        addedge_statement = {}
+        #format: Vertex.addEdge(label, Vertex, key, value, ... )
+        # so, everything before .addEdge is the fromVertex Gremlin
+        fromGremlin = raw_statement.split('.addEdge(')[0]
+        # the label is the first comma-separated argument inside .addEdge()
+        label = raw_statement.split('.addEdge(')[1].split(',')[0].strip()[1:-1]
+        # properties are all strings from the end of the function ')'
+        #  to the end of the toGremlin function, which also ends in ')'
+        properties = []
+        for prop in raw_statement.split(')')[-2].split(','):
+            if prop:
+                properties.append(prop.strip()[1:-1])
+        # grab everything after 'label'
+        #  start at g.V
+        #  end at second instance (in reverse) of ')'
+        toGremlinMess = raw_statement.split(label)[1]
+        beginToGremlin = toGremlinMess.find('g.V')
+        endToGremlin = toGremlinMess.rfind(')', 0, len(toGremlinMess) - 1) + 1
+        toGremlin = toGremlinMess[beginToGremlin:endToGremlin]
+        # wrap them with a bow
+        addedge_statement['fxn'] = 'addEdge'
+        addedge_statement['fromVertex'] = self.compose_standard_statement(fromGremlin)
+        addedge_statement['toVertex'] = self.compose_standard_statement(toGremlin)
+        addedge_statement['label'] = label
+        addedge_statement['properties'] = properties
+        output_statement['fxns'].append(addedge_statement)
+        return output_statement
+
     def compose_blueprints_statement(self, raw_statement):
         #addEdge is a special case, addVertex is not (and don't expect others to be)
         if 'addEdge' in raw_statement:
-            pass
+            statement = self.compose_addedge_statement(raw_statement)
         else:
             statement = self.compose_standard_statement(raw_statement)
         statement['api'] = 'blueprints'
