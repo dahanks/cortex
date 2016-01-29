@@ -55,8 +55,8 @@ public class Neuron {
                 def fromVertex = executeGremlinStatement(fxn['fromVertex']);
                 def toVertex = executeGremlinStatement(fxn['toVertex']);
                 def label = fxn['label']
-                def args = fxn['args'];
-                return fromVertex.addEdge(label, toVertex, *args);
+                def properties = fxn['properties'];
+                return fromVertex.addEdge(label, toVertex, *properties);
             } else {
                 return graph."${fxns[0]['fxn']}"(*fxns[0]['args']);
             }
