@@ -37,9 +37,9 @@ class WetwareWorker(Worker):
                     function_name = input_function.split('(')[0]
                     arguments = []
                     for argument in input_function.split('(')[1].split(')')[0].split(','):
-                        #don't put in empty strings
+                        #don't put in empty strings, and ignore spaces
                         if argument:
-                            arguments.append(argument[1:-1])
+                            arguments.append(argument.strip()[1:-1])
                     output_function = {
                         'fxn': function_name,
                         'args': arguments
@@ -51,13 +51,13 @@ class WetwareWorker(Worker):
     def convert_to_blueprints(self, message):
         output_data = self.compose_neuron_operation(message)
         output_data['api'] = 'blueprints'
-        print output_data
+        logging.debug(output_data)
         self.publish(output_data)
 
     def convert_to_gremlin(self, message):
         output_data = self.compose_neuron_operation(message)
         output_data['api'] = 'gremlin'
-        print output_data
+        logging.debug(output_data)
         self.publish(output_data)
 
     def define_default_args(self):

@@ -3,7 +3,7 @@
 IMAGE=cortex-wetware
 VERSION=1.0.0
 FROM_IMAGE=$(shell grep FROM Dockerfile | cut -d " " -f 2)
-CONTAINER=$(IMAGE)
+CONTAINER=wetware
 
 build:
 	docker build -t $(IMAGE) .
