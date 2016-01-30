@@ -28,10 +28,21 @@ class WetwareWorker(Worker):
         for statement in message['statements']:
             if '?' not in statement:
                 self.compose_indicative_nlp_statement(statement)
+            else:
+                self.compose_interrogative_nlp_statement(statement)
+
+    def compose_interrogative_nlp_statement(self, statement):
+        words = statement.split(' ')
+        does = words[0] #will disregard this
+        subj = words[1].strip()
+        pred = words[2].strip() + 's' #add back indicative verb conj 's'
+        obj = words[3].strip()[:-1] #take off the question mark
+        output_data = {'statements': []}
+        output_data['statements'].append(self.compose_gremlin_statement('g.V().has("name","' + subj + '").out("' + pred + '").has("name","' + obj + '")'))
+        self.publish(output_data, expect_reply=True)
 
     def compose_indicative_nlp_statement(self, statement):
         #we'll consider this is indicative statement
-        logging.debug("statement" + statement)
         words = statement.split(' ')
         subj = words[0].strip()
         pred = words[1].strip()
