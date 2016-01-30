@@ -38,7 +38,9 @@ class WetwareWorker(Worker):
         pred = words[2].strip() + 's' #add back indicative verb conj 's'
         obj = words[3].strip()[:-1] #take off the question mark
         output_data = {'statements': []}
-        output_data['statements'].append(self.compose_gremlin_statement('g.V().has("name","' + subj + '").out("' + pred + '").has("name","' + obj + '")'))
+        output_data['statements'].append(self.compose_gremlin_statement('g.V().has("name","' + subj + '").both("' + pred + '").has("name","' + obj + '")'))
+        output_data['statements'].append(self.compose_gremlin_statement('g.V().has("name","' + subj + '").both("' + pred + '").both("' + pred + '").simplePath().has("name","' + obj + '")'))
+        output_data['statements'].append(self.compose_gremlin_statement('g.V().has("name","' + subj + '").both("' + pred + '").both("' + pred + '").both("' + pred + '").simplePath().has("name","' + obj + '")'))
         self.publish(output_data, expect_reply=True)
 
     def compose_indicative_nlp_statement(self, statement):
@@ -134,6 +136,11 @@ class WetwareWorker(Worker):
         return statement
 
     def handle_reply(self, frame):
+        #interpret response
+        #respond to UI
+        # if first answer if yes, conf = 1.0
+        #  if second answer is yes, conf = 0.5
+        #  if third answer is yes, conf = 0.25
         logging.info(frame)
 
     def define_default_args(self):
