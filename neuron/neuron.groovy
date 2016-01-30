@@ -103,8 +103,14 @@ public class Neuron {
             def message = parser.parseText(frame.getBody());
             def reply = ["responses": []];
             for (statement in message['statements']) {
+                println statement;
                 def result = executeStatement(statement);
                 println result;
+                try {
+                    result = result.next();
+                } catch (Exception e) {
+                    result = "";
+                }
                 reply["responses"].add(result.toString());
                 g.tx().commit();
             }
