@@ -24,8 +24,23 @@ class WetwareWorker(Worker):
         elif frame.headers['destination'] == self.args['nlp_topic']:
             self.process_nlp_operation(message)
 
-    def process_nlp_operation(message):
-        words = message.split(' ')
+    def process_nlp_operation(self, message):
+        for statement in message['statements']:
+            if '?' not in statement:
+                self.compose_indicative_nlp_statement(statement)
+
+    def compose_indicative_nlp_statement(self, statement):
+        #we'll consider this is indicative statement
+        logging.debug("statement" + statement)
+        words = statement.split(' ')
+        subj = words[0].strip()
+        pred = words[1].strip()
+        obj = words[2].strip()
+        output_data = {'statements': []}
+        output_data['statements'].append(self.compose_blueprints_statement('graph.addVertex("name","' + subj + '")'))
+        output_data['statements'].append(self.compose_blueprints_statement('graph.addVertex("name","' + obj + '")'))
+        output_data['statements'].append(self.compose_blueprints_statement('g.V().has("name","' + subj + '").next().addEdge("' + pred + '", g.V().has("name","' + obj  + '").next())'))
+        self.publish(output_data)
 
     def compose_standard_statement(self, statement):
         output_statement = {'fxns': []}
