@@ -1,0 +1,58 @@
+@black:#000000;
+@white:#ffffff;
+@cobalt_blue:#0020C2;
+@lightblue:#0000dd;
+@red:#ff0000;
+@glowgreen:#00a060;
+@yellow:#ffff00;
+@crystal_blue:#5cb3ff;
+@firebrick:#800517;
+
+@font-face {
+    font-family: arial;
+}
+
+body {
+    color: @white;
+    text-shadow: 2px 2px @black;
+    background-color: @black;
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    font-family: nesFont;
+}
+
+#header {
+    display: flex;
+    flex-flow: row;
+    justify-content: center;
+}
+
+h1 {
+    flex-grow: 1;
+    text-align: center;
+}
+
+#bulk-modreq {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    //makes items horizontally centered
+    justify-content: center;
+    //makes items vertically centered
+    align-items: center;
+}
+
+.row {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    background-color: @cobalt_blue;
+    padding: 5px;
+    margin: 10px;
+    box-shadow: 5px 5px 5px @black;
+    border: 4px ridge @white;
+    border-radius: 10px;
+    //about the size of the longest box
+    min-width: 350px;
+}
