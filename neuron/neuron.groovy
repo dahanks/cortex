@@ -107,7 +107,15 @@ public class Neuron {
                 def result = executeStatement(statement);
                 println result;
                 try {
-                    result = result.next();
+                    if (statement["api"] == "gremlin") {
+                        result = result.next();
+                    } else if (statement["api"] == "blueprints") {
+                        if (result) {
+                            result = "OK";
+                        } else {
+                            result = "";
+                        }
+                    }
                 } catch (Exception e) {
                     result = "";
                 }
