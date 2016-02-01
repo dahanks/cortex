@@ -21,7 +21,7 @@ function on_message(message) {
         var dest = message['headers']['destination'];
         var body = JSON.parse(message['body']);
         if (dest.startsWith('/queue/temp')) {
-            handle_audrey_response(message);
+            handle_audrey_response(body['responses']);
         } else {
             console.log("Not sure where this message came from...dropping...");
         }
