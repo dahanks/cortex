@@ -8,17 +8,9 @@
 @crystal_blue:#5cb3ff;
 @firebrick:#800517;
 
-@font-face {
-    font-family: arial;
-}
-
 body {
-    color: @white;
-    text-shadow: 2px 2px @black;
-    background-color: @black;
-    background-size: 100% 100%;
-    background-repeat: no-repeat;
-    font-family: nesFont;
+    color: @black;
+    font-family: arial;
 }
 
 #header {
@@ -32,15 +24,38 @@ h1 {
     text-align: center;
 }
 
-#bulk-modreq {
+#audrey {
     display: flex;
     flex-direction: column;
     height: 100%;
     width: 100%;
     //makes items horizontally centered
-    justify-content: center;
+    justify-content: flex-end;
     //makes items vertically centered
-    align-items: center;
+    align-items: flex-end;
+}
+
+.dialog {
+    border: 1px solid black;
+    height: 300px;
+    width: 500px;
+}
+
+#audrey-dialog {
+}
+
+#audrey-avatar {
+}
+
+#you {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    //makes items horizontally centered
+    justify-content: flex-start;
+    //makes items vertically centered
+    align-items: flex-start;
 }
 
 .row {
