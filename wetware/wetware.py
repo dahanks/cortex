@@ -33,27 +33,33 @@ class WetwareWorker(Worker):
 
     def compose_interrogative_nlp_statement(self, statement):
         words = statement.split(' ')
-        does = words[0] #will disregard this
-        subj = words[1].strip()
-        pred = words[2].strip() + 's' #add back indicative verb conj 's'
-        obj = words[3].strip()[:-1] #take off the question mark
-        output_data = {'statements': []}
-        output_data['statements'].append(self.compose_gremlin_statement('g.V().has("name","' + subj + '").both("' + pred + '").has("name","' + obj + '")'))
-        output_data['statements'].append(self.compose_gremlin_statement('g.V().has("name","' + subj + '").both("' + pred + '").both("' + pred + '").simplePath().has("name","' + obj + '")'))
-        output_data['statements'].append(self.compose_gremlin_statement('g.V().has("name","' + subj + '").both("' + pred + '").both("' + pred + '").both("' + pred + '").simplePath().has("name","' + obj + '")'))
-        self.publish(output_data, expect_reply=True)
+        if len(words) < 4:
+            self.reply({'responses': "I'm terribly sorry, but I don't understand the question."})
+        else:
+            does = words[0] #will disregard this
+            subj = words[1].strip()
+            pred = words[2].strip() + 's' #add back indicative verb conj 's'
+            obj = words[3].strip()[:-1] #take off the question mark
+            output_data = {'statements': []}
+            output_data['statements'].append(self.compose_gremlin_statement('g.V().has("name","' + subj + '").both("' + pred + '").has("name","' + obj + '")'))
+            output_data['statements'].append(self.compose_gremlin_statement('g.V().has("name","' + subj + '").both("' + pred + '").both("' + pred + '").simplePath().has("name","' + obj + '")'))
+            output_data['statements'].append(self.compose_gremlin_statement('g.V().has("name","' + subj + '").both("' + pred + '").both("' + pred + '").both("' + pred + '").simplePath().has("name","' + obj + '")'))
+            self.publish(output_data, expect_reply=True)
 
     def compose_indicative_nlp_statement(self, statement):
         #we'll consider this is indicative statement
         words = statement.split(' ')
-        subj = words[0].strip()
-        pred = words[1].strip()
-        obj = words[2].strip()
-        output_data = {'statements': []}
-        output_data['statements'].append(self.compose_blueprints_statement('graph.addVertex("name","' + subj + '")'))
-        output_data['statements'].append(self.compose_blueprints_statement('graph.addVertex("name","' + obj + '")'))
-        output_data['statements'].append(self.compose_blueprints_statement('g.V().has("name","' + subj + '").next().addEdge("' + pred + '", g.V().has("name","' + obj  + '").next())'))
-        self.publish(output_data)
+        if len(words) < 3:
+            self.reply({'responses': "I'm having trouble understanding what it is you want to say..."})
+        else:
+            subj = words[0].strip()
+            pred = words[1].strip()
+            obj = words[2].strip()
+            output_data = {'statements': []}
+            output_data['statements'].append(self.compose_blueprints_statement('graph.addVertex("name","' + subj + '")'))
+            output_data['statements'].append(self.compose_blueprints_statement('graph.addVertex("name","' + obj + '")'))
+            output_data['statements'].append(self.compose_blueprints_statement('g.V().has("name","' + subj + '").next().addEdge("' + pred + '", g.V().has("name","' + obj  + '").next())'))
+            self.publish(output_data)
 
     def compose_standard_statement(self, statement):
         output_statement = {'fxns': []}
@@ -141,7 +147,23 @@ class WetwareWorker(Worker):
         # if first answer if yes, conf = 1.0
         #  if second answer is yes, conf = 0.5
         #  if third answer is yes, conf = 0.25
-        logging.info(frame)
+        reply = {}
+        try:
+            responses = json.loads(frame.body)['responses']
+            if len(responses) == 1:
+                reply['responses'] = "Alright, then.  I'll note that."
+            elif len(responses) == 3:
+                if responses[0]:
+                    reply['responses'] = "Yes, most certainly."
+                elif responses[1]:
+                    reply['responses'] = "I think so, but I can't be sure."
+                elif responses[2]:
+                    reply['responses'] = "I suppose it's possible, but I doubt it."
+            else:
+                reply['responses'] = "I'm terribly sorry.  I'm not sure how to answer that."
+        except KeyError, ValueError:
+            reply['responses'] = "Hmm, apologies...I've...lost my train of thought..."
+        self.reply(reply)
 
     def define_default_args(self):
         ### This header must not be modified ###
