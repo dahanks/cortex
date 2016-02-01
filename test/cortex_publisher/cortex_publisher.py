@@ -12,7 +12,17 @@ class PublisherWorker(Worker):
 
     def run(self):
         with ApolloConnection(self.args) as self.apollo_conn:
-            self.sendStatements()
+#            self.sendStatements()
+            self.sendNLP()
+
+    def sendNLP(self):
+        data = { 'statements': [
+#            "Mark knows Zack",
+#            "Mark knows George",
+            "Does George know Zack?",
+#            "Does David know Lorna?",
+        ]}
+        self.publish(data, '/topic/wetware.nlp', expect_reply=self.args['expect_reply'])
 
     def sendStatements(self):
         data = { 'statements': [
