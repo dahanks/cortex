@@ -104,9 +104,10 @@ public class Neuron {
             def reply = ["responses": []];
             for (statement in message['statements']) {
                 println statement;
-                def result = executeStatement(statement);
-                println result;
+                def result;
                 try {
+                    result = executeStatement(statement);
+                    println result;
                     if (statement["api"] == "gremlin") {
                         result = result.next();
                     } else if (statement["api"] == "blueprints") {
