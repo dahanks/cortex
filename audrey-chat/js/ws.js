@@ -42,7 +42,7 @@ function error_callback(error) {
         var message = error['headers']['message'];
         console.log("Error: " + message);
         if (message.indexOf("Stale connection") != -1){
-            establishConnection();
+            client.connect(user, password, connect_callback, error_callback);
         }
     }
 }
