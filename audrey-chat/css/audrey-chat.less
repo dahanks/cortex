@@ -7,10 +7,13 @@
 @yellow:#ffff00;
 @crystal_blue:#5cb3ff;
 @firebrick:#800517;
-
+@grey:#D0D0D0;
+@pink:#FF99CC;
+@dark_pink:#CC3399;
 body {
     color: @black;
-    font-family: arial;
+    font-family: 'Lucida Sans Unicode';
+    font-size: 20px;
 }
 
 #header {
@@ -22,8 +25,8 @@ body {
 h1 {
     flex-grow: 1;
     text-align: center;
-    font-family: 'Brush Script MT', cursive;
-    font-size: 60px;
+    font-family: cursive;
+    font-size: 50px;
 }
 
 #audrey {
@@ -34,43 +37,56 @@ h1 {
     //makes items horizontally centered
     justify-content: flex-end;
     //makes items vertically centered
-    align-items: flex-end;
+    align-items: flex-start;
 }
 
 .dialog {
-    border: 1px solid black;
-    height: 300px;
+    border: 5px ridge black;
+    border-radius: 10px;
+    padding: 10px;
+    height: 100px;
     width: 500px;
+    font-size: 20px;
+    box-shadow: 10px 10px 5px #888888;
 }
 
 #audrey-dialog {
+    font-family: cursive;
+    font-size: 30px;
+    background-color: @pink;
+    border-color: @dark_pink;
 }
 
 #audrey-avatar {
+    border: 7px ridge @dark_pink;
+    border-radius: 10px;
+    box-shadow: 10px 10px 5px #888888;
+    height: 245px;
+}
 
+#you-dialog {
+    background-color: @grey;
+}
+
+#you-avatar {
+    border: 7px ridge black;
+    border-radius: 10px;
+    box-shadow: 10px 10px 5px #888888;
+    height: 245px;
 }
 
 #you {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     height: 100%;
     width: 100%;
     //makes items horizontally centered
     justify-content: flex-start;
     //makes items vertically centered
-    align-items: flex-start;
+    align-items: flex-end;
 }
 
-.row {
-    display: flex;
-    flex-direction: column;
-    flex-grow: 1;
-    background-color: @cobalt_blue;
-    padding: 5px;
-    margin: 10px;
-    box-shadow: 5px 5px 5px @black;
-    border: 4px ridge @white;
-    border-radius: 10px;
-    //about the size of the longest box
-    min-width: 350px;
+#you-img {
+    height: 100%;
+    width: auto;
 }

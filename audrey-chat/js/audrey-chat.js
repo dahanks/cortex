@@ -10,7 +10,9 @@ function draw_audrey() {
     $("#audrey-avatar").append("<img id=audrey-img src='img/idle.gif'>");
 }
 function draw_you() {
+    $("#you").append("<div id=you-avatar></div>");
     $("#you").append("<div id=you-dialog class=dialog contenteditable></div>");
+    $("#you-avatar").append("<img id=you-img src='img/you.png'>");
     $("#you-dialog").keydown(function(e) {
         var key = e.which;
         if (key == 13) {
