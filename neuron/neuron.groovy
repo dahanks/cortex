@@ -131,9 +131,11 @@ public class Neuron {
             }
         } catch (JsonException e) {
             logging.warn("Neuron received invalid JSON message");
+            connection.send(dest, new JsonBuilder(reply).toString());
         } catch (Exception e) {
             e.printStackTrace();
             logging.warn("Neuron failed to run operation; probably invalid Gremlin");
+            connection.send(dest, new JsonBuilder(reply).toString());
         }
     }
 
