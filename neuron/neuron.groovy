@@ -147,8 +147,8 @@ public class Neuron {
                 onMessage(frame);
                 //acking is done inside the above method
             } catch (SocketTimeoutException e) {
-                //timeouts are not fatal
-                logging.warn("Timeout on connection to Apollo.  Trying again (infinitely)...");
+                //timeouts are not fatal (but this will happen a lot, so let's not log it)
+                //logging.warn("Timeout on connection to Apollo.  Trying again (infinitely)...");
             }
         }
     }
