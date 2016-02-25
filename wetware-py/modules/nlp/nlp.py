@@ -85,13 +85,32 @@ class WetwareWorker(Worker):
             #take out the period
             if '.' in obj:
                 obj = obj[:-1]
-            output_data = {'statements': []}
-            output_data['statements'].append(self.compose_blueprints_statement('graph.addVertex("name","' + subj + '")'))
-            output_data['statements'].append(self.compose_blueprints_statement('graph.addVertex("name","' + obj + '")'))
-            output_data['statements'].append(self.compose_blueprints_statement('g.V().has("name","' + subj + '").next().addEdge("' + pred + '", g.V().has("name","' + obj  + '").next())'))
-            self.publish(output_data, expect_reply=True, callback=self.interpret_audrey_response)
+            self.add_vertex(subj, obj)
+            #self.add_edge(subj, obj, label)
         except Exception:
             self.reply({'responses': "I'm having trouble understanding what it is you want to say..."})
+
+    def add_vertex(self, *names):
+        output_data = { 'statements': []}
+        fxns = {'fxns': [], 'api': 'neuron'}
+        for name in names:
+            fxn = {'fxn': 'addVertex', 'name': name}
+            fxns['fxns'].append(fxn)
+        output_data['statements'].append(fxns)
+        self.publish(output_data, expect_reply=True, callback=self.acknowledge_response)
+
+    def acknowledge_response(self, frame):
+        #TODO: clean this up
+        reply = {'responses': ""}
+        try:
+            responses = json.loads(frame.body)['responses']
+            for response in responses:
+                if not response:
+                    reply['responses'] = "Hmm, apologies...I've...lost my train of thought..."
+            reply['responses'] = "Alright, then.  I'll note that."
+        except KeyError, ValueError:
+            reply['responses'] = "Hmm, apologies...I've...lost my train of thought..."
+        self.reply(reply)
 
     def compose_standard_statement(self, statement):
         output_statement = {'fxns': []}
