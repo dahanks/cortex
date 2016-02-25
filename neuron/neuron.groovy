@@ -43,6 +43,28 @@ public class Neuron {
             return executeBlueprintsStatement(statement);
         } else if (api == "gremlin") {
             return executeGremlinStatement(statement);
+        } else if (api == "neuron") {
+            return executeNeuronStatement(statement);
+        }
+    }
+
+    public executeNeuronStatement(statement) {
+        def fxns = statement['fxns'];
+        def retVals = [];
+        fxns.each {
+            if (it['fxn'] == "addVertex") {
+                retVals.push(neuronAddVertex(it['name']));
+            }
+        }
+        return retVals;
+    }
+
+    public neuronAddVertex(name) {
+        def vertex_iter = g.V().has("name", name);
+        if (vertex_iter) {
+            return = vertex_iter.next();
+        } else {
+            return = graph.addVertex("name", name);
         }
     }
 
@@ -107,15 +129,15 @@ public class Neuron {
                 def result;
                 try {
                     result = executeStatement(statement);
-                    println result;
-                    if (statement["api"] == "gremlin") {
-                        result = result.next();
-                    } else if (statement["api"] == "blueprints") {
+                    if (statement["api"] == "blueprints" ||
+                        statement["api"] == "neuron") {
                         if (result) {
                             result = "OK";
                         } else {
                             result = "";
                         }
+                    } else if (statement["api"] == "gremlin"){
+                        result = result.next();
                     }
                 } catch (Exception e) {
                     result = "";
