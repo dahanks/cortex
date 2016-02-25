@@ -28,6 +28,7 @@ class Worker(object):
         self.apollo_conn = None
         self.reply_topics = []
         self.reply_subs = []
+        self.reply_callbacks = []
 
     def __parse_all_params(self, subclass_section=None):
         """Parse all command line and config args of base and optional subclass
@@ -271,15 +272,22 @@ class Worker(object):
     def handle_reply(self, frame):
         """Handles a reply over a temp queue to a request you already submitted
 
-        This is intended to be a virtual method that you *don't* need to
-        override.  That is, you don't need to override this if you never expect
-        to make request that don't require replies.  However, if you *do* need
-        to override this, you wouldn't ever need to call this super().  So by
-        implementing the method here, you won't get an error simply by
-        instantiating the object.
+        All replies will look for a callback (regardless of whether or not you
+        passed one in your publish() call.  The callback will be None if you
+        did not pass one.  If the callback is valid, we'll try to call the
+        function, but we do not guarantee that it exists.
         """
-        logging.info("Got a reply!")
-        logging.info(frame)
+        callback = self.reply_callbacks.pop()
+        if (callback
+            and hasattr(callback, '__name__')
+            and hasattr(callback, '__call__')
+            and callback.__name__ in dir(self)):
+            callback(frame)
+        elif not callback:
+            #No callback is fine, we just won't do anything
+            pass
+        else:
+            raise WetwareException("Invalid callback provided: {0}".format(callback))
 
     def verify_frame(self, frame):
         """Verify a frame (OVERRIDE and SUPER)
@@ -324,7 +332,7 @@ class Worker(object):
 
     Returns False if you never specified an OUTPUT_TOPIC.
     """
-    def publish(self, message, topic=None, expect_reply=False):
+    def publish(self, message, topic=None, expect_reply=False, callback=None):
         # If you pass a dict, we'll convert it to JSON for you
         if isinstance(message, dict):
             message_str = json.dumps(message)
@@ -352,6 +360,10 @@ class Worker(object):
                         self.apollo_conn.subscribe('/temp-queue/' + temp_uuid,
                                                    {StompSpec.ACK_HEADER:
                                                     StompSpec.ACK_CLIENT_INDIVIDUAL}))
+                    if callback:
+                        self.reply_callbacks.append(callback)
+                    else:
+                        self.reply_callbacks.append(None)
                     self.apollo_conn.send(topic, message_str,
                                           headers={'reply-to': '/temp-queue/' + temp_uuid})
                 else:
@@ -450,11 +462,11 @@ class ApolloConnection(object):
             self.args['apollo_port']))
         self.apollo_conn.disconnect()
 
-class WorkerException(Exception):
+class WetwareException(Exception):
     pass
 
-class ConfigException(WorkerException):
+class ConfigException(WetwareException):
     pass
 
-class FrameException(WorkerException):
+class FrameException(WetwareException):
     pass
