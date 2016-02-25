@@ -1,7 +1,7 @@
 FROM wetware-py:latest
 
-COPY . /usr/local/wetware
-WORKDIR /usr/local/wetware
+COPY . /usr/local/wetware-nlp
+WORKDIR /usr/local/wetware-nlp
 
 ENTRYPOINT ["python"]
-CMD ["wetware.py", "--config", "wetware.config"]
+CMD ["nlp.py", "--config", "nlp.config"]
