@@ -2,9 +2,10 @@
 
 import logging
 import json
+import sys
 
 from wetware.worker import Worker
-from wetware.worker import WorkerException
+from wetware.worker import WetwareException
 from wetware.worker import FrameException
 
 class WetwareWorker(Worker):
@@ -13,16 +14,21 @@ class WetwareWorker(Worker):
         super(WetwareWorker, self).__init__(subclass_section)
 
     def on_message(self, frame):
-        ### This header must not be modified ###
-        super(WetwareWorker, self).on_message(frame)
-        message = json.loads(frame.body)
-        ############## End header ##############
+        try:
+            ### This header must not be modified ###
+            super(WetwareWorker, self).on_message(frame)
+            message = json.loads(frame.body)
+            ############## End header ##############
 
-        #TODO throw out replies in the super class
-        if frame.headers['destination'] == self.args['neuron_topic']:
-            self.process_neuron_operation(message)
-        elif frame.headers['destination'] == self.args['nlp_topic']:
-            self.process_nlp_operation(message)
+            #TODO throw out replies in the super class
+            if frame.headers['destination'] == self.args['neuron_topic']:
+                self.process_neuron_operation(message)
+            elif frame.headers['destination'] == self.args['nlp_topic']:
+                self.process_nlp_operation(message)
+        except:
+            self.reply({'responses': "I'm terribly sorry.  I'm feeling faint.  Perhaps I should see a doctor..."})
+            logging.error(sys.exc_info()[0])
+            logging.error(sys.exc_info()[1])
 
     def process_nlp_operation(self, message):
         for statement in message['statements']:
@@ -33,6 +39,14 @@ class WetwareWorker(Worker):
 
     def compose_interrogative_nlp_statement(self, statement):
         words = statement.split(' ')
+        if words[0] == 'Does':
+            self.compose_does_statement(words)
+        elif words[0] == 'Where':
+            self.compose_where_statement(words)
+        else:
+            self.reply({'responses': "I'm terribly sorry, but I don't understand the question."})
+
+    def compose_does_statement(self, words):
         try:
             does = words[0] #will disregard this
             subj = words[1].strip()
@@ -42,7 +56,22 @@ class WetwareWorker(Worker):
             output_data['statements'].append(self.compose_gremlin_statement('g.V().has("name","' + subj + '").both("' + pred + '").has("name","' + obj + '")'))
             output_data['statements'].append(self.compose_gremlin_statement('g.V().has("name","' + subj + '").both("' + pred + '").both("' + pred + '").simplePath().has("name","' + obj + '")'))
             output_data['statements'].append(self.compose_gremlin_statement('g.V().has("name","' + subj + '").both("' + pred + '").both("' + pred + '").both("' + pred + '").simplePath().has("name","' + obj + '")'))
-            self.publish(output_data, expect_reply=True)
+            self.publish(output_data, expect_reply=True, callback=self.interpret_audrey_response)
+        except AttributeError:
+            self.reply({'responses': "I'm terribly sorry.  I'm feeling faint.  Perhaps I should see a doctor..."})
+            logging.error(sys.exc_info()[0])
+            logging.error(sys.exc_info()[1])
+        except Exception:
+            self.reply({'responses': "I'm terribly sorry, but I don't understand the question."})
+
+    def compose_where_statement(self, words):
+        try:
+            where_is = words[0], words[1] #will disregard this
+            obj = words[3].strip()[:-1] #take off the question mark
+            output_data = {'statements': []}
+            output_data['statements'].append(self.compose_gremlin_statement(
+                'g.V().has("name","' + obj + '").value("location")'))
+            self.publish(output_data, expect_reply=True, callback=self.interpret_audrey_response)
         except Exception:
             self.reply({'responses': "I'm terribly sorry, but I don't understand the question."})
 
@@ -60,7 +89,7 @@ class WetwareWorker(Worker):
             output_data['statements'].append(self.compose_blueprints_statement('graph.addVertex("name","' + subj + '")'))
             output_data['statements'].append(self.compose_blueprints_statement('graph.addVertex("name","' + obj + '")'))
             output_data['statements'].append(self.compose_blueprints_statement('g.V().has("name","' + subj + '").next().addEdge("' + pred + '", g.V().has("name","' + obj  + '").next())'))
-            self.publish(output_data, expect_reply=True)
+            self.publish(output_data, expect_reply=True, callback=self.interpret_audrey_response)
         except Exception:
             self.reply({'responses': "I'm having trouble understanding what it is you want to say..."})
 
@@ -144,7 +173,7 @@ class WetwareWorker(Worker):
         statement['api'] = 'gremlin'
         return statement
 
-    def handle_reply(self, frame):
+    def interpret_audrey_response(self, frame):
         #interpret response
         #respond to UI
         # if first answer if yes, conf = 1.0
@@ -205,9 +234,6 @@ class WetwareWorker(Worker):
             for key in ['statements']:
                 if key not in message:
                     raise FrameException("Message has no {0} field".format(key))
-
-class WetwareException(WorkerException):
-    pass
 
 def main():
     logging.basicConfig(level=logging.DEBUG)
