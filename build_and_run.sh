@@ -36,7 +36,7 @@ make
 popd
 
 #Wetware
-pushd wetware/
+pushd wetware-py/modules/nlp
 make && make run
 popd
 
