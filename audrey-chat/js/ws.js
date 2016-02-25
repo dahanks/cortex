@@ -5,9 +5,7 @@ var password = "password";
 var wetware_topic = "/topic/wetware.nlp";
 var reply_topics = [];
 
-// apollo_host can be set from the URL. Otherwise it defaults the server it is deployed on
-// http://localhost:8888/ccd-web-git/beam_hlr_tabs.html?apollo_host=137.78.81.99
-function setup_websocket(apollo_host) {
+function setup_websocket() {
     if (window.WebSocket) {
         client = Stomp.client(url);
         client.connect(user, password, connect_callback, error_callback);

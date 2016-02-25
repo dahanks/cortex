@@ -1,4 +1,4 @@
-FROM ccd-py:latest
+FROM wetware-py:latest
 
 COPY . /usr/local/wetware
 WORKDIR /usr/local/wetware

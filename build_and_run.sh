@@ -29,3 +29,18 @@ popd
 pushd neuron/
 make && make run
 popd
+
+#Wetware-Py
+pushd wetware-py/
+make
+popd
+
+#Wetware
+pushd wetware/
+make && make run
+popd
+
+#Audrey Chat
+pushd audrey-chat/
+make && make run
+popd

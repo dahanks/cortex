@@ -5,8 +5,8 @@ import json
 import sys
 import time
 
-from ccd.worker import Worker
-from ccd.worker import ApolloConnection
+from wetware.worker import Worker
+from wetware.worker import ApolloConnection
 
 class PublisherWorker(Worker):
 

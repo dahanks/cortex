@@ -3,9 +3,9 @@
 import logging
 import json
 
-from ccd.worker import Worker
-from ccd.worker import WorkerException
-from ccd.worker import FrameException
+from wetware.worker import Worker
+from wetware.worker import WorkerException
+from wetware.worker import FrameException
 
 class WetwareWorker(Worker):
 

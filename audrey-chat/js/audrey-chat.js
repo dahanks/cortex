@@ -1,7 +1,7 @@
 var main = function() {
     draw_audrey();
     draw_you();
-    setup_websocket(location.host);
+    setup_websocket();
 }
 
 function draw_audrey() {
