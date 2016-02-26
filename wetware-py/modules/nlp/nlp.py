@@ -58,7 +58,7 @@ class WetwareWorker(Worker):
             output_data['statements'].append(self.compose_gremlin_statement('g.V().has("name","' + subj + '").both("' + pred + '").both("' + pred + '").simplePath().has("name","' + obj + '")'))
             output_data['statements'].append(self.compose_gremlin_statement('g.V().has("name","' + subj + '").both("' + pred + '").both("' + pred + '").both("' + pred + '").simplePath().has("name","' + obj + '")'))
             self.publish(output_data, expect_reply=True, callback=self.interpret_does_response)
-        except Exception:
+        except:
             self.reply({'responses': "I'm terribly sorry, but I don't understand the question."})
             logging.exception("Caught Exception:")
 
@@ -71,7 +71,7 @@ class WetwareWorker(Worker):
             output_data['statements'].append(self.compose_gremlin_statement(
                 'g.V().has("name","' + subj + '").values("' + key + '")'))
             self.publish(output_data, expect_reply=True, callback=self.interpret_audrey_is)
-        except Exception:
+        except:
             self.reply({'responses': "I'm terribly sorry, but I don't understand the question."})
             logging.exception("Caught Exception:")
 
@@ -84,7 +84,7 @@ class WetwareWorker(Worker):
             output_data['statements'].append(self.compose_gremlin_statement(
                 'g.V().has("name","' + obj + '").value("location")'))
             self.publish(output_data, expect_reply=True, callback=self.interpret_audrey_response)
-        except Exception:
+        except:
             self.reply({'responses': "I'm terribly sorry, but I don't understand the question."})
             logging.exception("Caught Exception:")
 
@@ -105,7 +105,7 @@ class WetwareWorker(Worker):
                 #otherwise, add nodes and edge (add_edge adds nodes and edge)
                 output_data['statements'].append(self.add_edge_statement(subj, obj, pred))
             self.publish(output_data, expect_reply=True, callback=self.acknowledge_response)
-        except Exception:
+        except:
             self.reply({'responses': "I'm having trouble understanding what it is you want to say..."})
             logging.exception("Caught Exception:")
 
