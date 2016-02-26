@@ -78,6 +78,7 @@ class WetwareWorker(Worker):
     def compose_indicative_nlp_statement(self, statement):
         #we'll consider this is indicative statement
         words = statement.split(' ')
+        output_data = {'statements': []}
         try:
             subj = words[0].strip()
             pred = words[1].strip()
@@ -85,19 +86,27 @@ class WetwareWorker(Worker):
             #take out the period
             if '.' in obj:
                 obj = obj[:-1]
-            self.add_vertex(subj, obj)
-            #self.add_edge(subj, obj, label)
-        except Exception:
+            #adding an edge adds the vertices, too
+            output_data['statements'].append(self.add_edge_statement(subj, obj, pred))
+            self.publish(output_data, expect_reply=True, callback=self.acknowledge_response)
+        except WetwareException:
             self.reply({'responses': "I'm having trouble understanding what it is you want to say..."})
 
-    def add_vertex(self, *names):
-        output_data = { 'statements': []}
-        fxns = {'fxns': [], 'api': 'neuron'}
+    def add_vertex_statement(self, *names):
+        statement = {'fxns': [], 'api': 'neuron'}
         for name in names:
             fxn = {'fxn': 'addVertex', 'name': name}
-            fxns['fxns'].append(fxn)
-        output_data['statements'].append(fxns)
-        self.publish(output_data, expect_reply=True, callback=self.acknowledge_response)
+            statement['fxns'].append(fxn)
+        return statement
+
+    def add_edge_statement(self, from_vertex, to_vertex, label):
+        statement = {'fxns': [], 'api': 'neuron'}
+        fxn = {'fxn': 'addEdge',
+               'fromVertex': from_vertex,
+               'toVertex': to_vertex,
+               'label': label }
+        statement['fxns'].append(fxn)
+        return statement
 
     def acknowledge_response(self, frame):
         #TODO: clean this up
