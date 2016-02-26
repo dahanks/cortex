@@ -27,8 +27,7 @@ class WetwareWorker(Worker):
                 self.process_nlp_statement(message)
         except:
             self.reply({'responses': "I'm terribly sorry.  I'm feeling faint.  Perhaps I should see a doctor..."})
-            logging.error(sys.exc_info()[0])
-            logging.error(sys.exc_info()[1])
+            logging.exception("Caught Exception:")
 
     def process_nlp_statement(self, message):
         for statement in message['statements']:
@@ -59,12 +58,9 @@ class WetwareWorker(Worker):
             output_data['statements'].append(self.compose_gremlin_statement('g.V().has("name","' + subj + '").both("' + pred + '").both("' + pred + '").simplePath().has("name","' + obj + '")'))
             output_data['statements'].append(self.compose_gremlin_statement('g.V().has("name","' + subj + '").both("' + pred + '").both("' + pred + '").both("' + pred + '").simplePath().has("name","' + obj + '")'))
             self.publish(output_data, expect_reply=True, callback=self.interpret_does_response)
-        except AttributeError:
-            self.reply({'responses': "I'm terribly sorry.  I'm feeling faint.  Perhaps I should see a doctor..."})
-            logging.error(sys.exc_info()[0])
-            logging.error(sys.exc_info()[1])
         except Exception:
             self.reply({'responses': "I'm terribly sorry, but I don't understand the question."})
+            logging.exception("Caught Exception:")
 
     def parse_question_is(self, words):
         try:
@@ -77,6 +73,7 @@ class WetwareWorker(Worker):
             self.publish(output_data, expect_reply=True, callback=self.interpret_audrey_is)
         except Exception:
             self.reply({'responses': "I'm terribly sorry, but I don't understand the question."})
+            logging.exception("Caught Exception:")
 
     #TODO: this is broken
     def parse_question_where(self, words):
@@ -89,6 +86,7 @@ class WetwareWorker(Worker):
             self.publish(output_data, expect_reply=True, callback=self.interpret_audrey_response)
         except Exception:
             self.reply({'responses': "I'm terribly sorry, but I don't understand the question."})
+            logging.exception("Caught Exception:")
 
     def parse_indicative_statement(self, statement):
         words = statement.split(' ')
@@ -107,8 +105,9 @@ class WetwareWorker(Worker):
                 #otherwise, add nodes and edge (add_edge adds nodes and edge)
                 output_data['statements'].append(self.add_edge_statement(subj, obj, pred))
             self.publish(output_data, expect_reply=True, callback=self.acknowledge_response)
-        except WetwareException:
+        except Exception:
             self.reply({'responses': "I'm having trouble understanding what it is you want to say..."})
+            logging.exception("Caught Exception:")
 
     def add_vertex_statement(self, *names):
         statement = {'fxns': [], 'api': 'neuron'}
@@ -146,6 +145,7 @@ class WetwareWorker(Worker):
             reply['responses'] = "Alright, then.  I'll note that."
         except KeyError, ValueError:
             reply['responses'] = "Hmm, apologies...I've...lost my train of thought..."
+            logging.exception("Caught Exception:")
         self.reply(reply)
 
     def compose_raw_statement(self, statement):
@@ -263,6 +263,7 @@ class WetwareWorker(Worker):
                 reply['responses'] = "I'm terribly sorry.  I'm not sure how to answer that."
         except KeyError, ValueError:
             reply['responses'] = "Hmm, apologies...I've...lost my train of thought..."
+            logging.exception("Caught Exception:")
         self.reply(reply)
 
     def define_default_args(self):
