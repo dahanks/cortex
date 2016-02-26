@@ -43,6 +43,8 @@ class WetwareWorker(Worker):
             self.compose_does_statement(words)
         elif words[0] == 'Where':
             self.compose_where_statement(words)
+        elif words[0] == 'Is':
+            self.compose_is_statement(words)
         else:
             self.reply({'responses': "I'm terribly sorry, but I don't understand the question."})
 
@@ -64,6 +66,19 @@ class WetwareWorker(Worker):
         except Exception:
             self.reply({'responses': "I'm terribly sorry, but I don't understand the question."})
 
+    def compose_is_statement(self, words):
+        try:
+            is_word = words[0] #will disregard this
+            subj = words[1].strip()
+            key = words[2].strip()[:-1]
+            output_data = {'statements': []}
+            output_data['statements'].append(self.compose_gremlin_statement(
+                'g.V().has("name","' + subj + '").values("' + key + '")'))
+            self.publish(output_data, expect_reply=True, callback=self.interpret_audrey_is)
+        except Exception:
+            self.reply({'responses': "I'm terribly sorry, but I don't understand the question."})
+
+    #TODO: this is broken
     def compose_where_statement(self, words):
         try:
             where_is = words[0], words[1] #will disregard this
@@ -86,8 +101,12 @@ class WetwareWorker(Worker):
             #take out the period
             if '.' in obj:
                 obj = obj[:-1]
-            #adding an edge adds the vertices, too
-            output_data['statements'].append(self.add_edge_statement(subj, obj, pred))
+            if pred == "is":
+                #"is" is just a boolean property
+                output_data['statements'].append(self.add_vertex_property_statement(subj, obj, True))
+            else:
+                #adding an edge adds the vertices, too
+                output_data['statements'].append(self.add_edge_statement(subj, obj, pred))
             self.publish(output_data, expect_reply=True, callback=self.acknowledge_response)
         except WetwareException:
             self.reply({'responses': "I'm having trouble understanding what it is you want to say..."})
@@ -105,6 +124,15 @@ class WetwareWorker(Worker):
                'fromVertex': from_vertex,
                'toVertex': to_vertex,
                'label': label }
+        statement['fxns'].append(fxn)
+        return statement
+
+    def add_vertex_property_statement(self, name, prop_name, prop_value):
+        statement = {'fxns': [], 'api': 'neuron'}
+        fxn = {'fxn': 'addVertexProperty',
+               'name': name,
+               'property': prop_name,
+               'value': prop_value }
         statement['fxns'].append(fxn)
         return statement
 
@@ -200,6 +228,15 @@ class WetwareWorker(Worker):
         statement = self.compose_standard_statement(raw_statement)
         statement['api'] = 'gremlin'
         return statement
+
+    def interpret_audrey_is(self, frame):
+        reply = {}
+        responses = json.loads(frame.body)['responses']
+        if responses[0]:
+            reply['responses'] = "Well, yes, I do believe so."
+        else:
+            reply['responses'] = "No, I don't believe that's true."
+        self.reply(reply)
 
     def interpret_audrey_response(self, frame):
         #interpret response
