@@ -1,5 +1,7 @@
 FROM wetware-py:latest
 
+RUN pip install paho-mqtt
+
 COPY . /usr/local/wetware-ngfr-sensors
 WORKDIR /usr/local/wetware-ngfr-sensors
 
