@@ -27,8 +27,17 @@ class WetwareWorker(Worker):
         self.mqtt_client.subscribe("global/#")
 
     def mqtt_on_message(self, client, userdata, message):
-        logging.debug("Received MQTT message on topic: {0}".format(message.topic))
-        logging.debug("Message: {0}".format(message.payload))
+        logging.debug(message.payload)
+        if (message.topic.endswith("/gps")):
+            self.parse_gps_data(message.payload)
+        elif (message.topic.endswith("/sensortag")):
+            self.parse_sensortag_data(message.payload)
+
+    def parse_gps_data(self, message):
+        pass
+
+    def parse_sensortag_data(self, message):
+        pass
 
 def main():
     logging.basicConfig(level=logging.DEBUG)
