@@ -52,8 +52,13 @@ public class Neuron {
         def fxns = statement['fxns'];
         def retVals = [];
         fxns.each {
-            if (it['fxn'] == "addVertex") {
+            switch (it['fxn']) {
+            case "addVertex":
                 retVals.push(neuronAddVertex(it['name']));
+                break;
+            case "addEdge":
+                retVals.push(neuronEdgeVertex(it['fromVertex'],it['toVertex'],it['label']));
+                break;
             }
         }
         return retVals;
@@ -62,9 +67,21 @@ public class Neuron {
     public neuronAddVertex(name) {
         def vertex_iter = g.V().has("name", name);
         if (vertex_iter) {
-            return = vertex_iter.next();
+            return vertex_iter.next();
         } else {
-            return = graph.addVertex("name", name);
+            return graph.addVertex("name", name);
+        }
+    }
+
+    public neuronEdgeVertex(fromName, toName, label) {
+    //Adding an Edge will add the Vertices as well
+        def fromVertex = neuronAddVertex(fromName);
+        def toVertex = neuronAddVertex(toName);
+        def edge_iter = g.V(fromVertex).out("knows").has("name", toName);
+        if (edge_iter) {
+            return edge_iter.next();
+        } else {
+            return fromVertex.addEdge(label, toVertex);
         }
     }
 
