@@ -3,7 +3,7 @@
 IMAGE=wetware-ngfr-sensors
 VERSION=1.0.0
 FROM_IMAGE=$(shell grep FROM Dockerfile | cut -d " " -f 2)
-CONTAINER=ngfr
+CONTAINER=sensors
 
 build:
 	docker build -t $(IMAGE) .

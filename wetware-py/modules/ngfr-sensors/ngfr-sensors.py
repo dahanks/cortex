@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import logging
+import json
 import paho.mqtt.client as mqtt
 
 from wetware.worker import Worker
@@ -27,17 +28,36 @@ class WetwareWorker(Worker):
         self.mqtt_client.subscribe("global/#")
 
     def mqtt_on_message(self, client, userdata, message):
-        logging.debug(message.payload)
         if (message.topic.endswith("/gps")):
-            self.parse_gps_data(message.payload)
+            self.parse_gps_data(json.loads(message.payload))
         elif (message.topic.endswith("/sensortag")):
-            self.parse_sensortag_data(message.payload)
+            self.parse_sensortag_data(json.loads(message.payload))
 
     def parse_gps_data(self, message):
-        pass
+        node = message['clientname']
+        lat = message['latitude']
+        lon = message['longitude']
+        lat_lon = "[{0},{1}]".format(lat, lon)
+        output_data = {'statements': []}
+        output_data['statements'].append(self.add_vertex_property_statement(node, "location", str(lat_lon)))
+        self.publish(output_data)
 
     def parse_sensortag_data(self, message):
-        pass
+        node = message['clientname']
+        humidity = message['humidity']['relative_humidity']
+        output_data = {'statements': []}
+        output_data['statements'].append(self.add_vertex_property_statement(node, "humidity", str(humidity)))
+        self.publish(output_data)
+
+    def add_vertex_property_statement(self, name, prop_name, prop_value):
+        statement = {'fxns': [], 'api': 'neuron'}
+        fxn = {'fxn': 'addVertexProperty',
+               'name': name,
+               'property': prop_name,
+               'value': prop_value }
+        logging.debug(fxn)
+        statement['fxns'].append(fxn)
+        return statement
 
 def main():
     logging.basicConfig(level=logging.DEBUG)
