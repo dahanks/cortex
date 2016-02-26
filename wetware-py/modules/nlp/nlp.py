@@ -233,7 +233,7 @@ class WetwareWorker(Worker):
         reply = {}
         responses = json.loads(frame.body)['responses']
         if responses[0]:
-            reply['responses'] = "Well, yes, I do believe so."
+            reply['responses'] = "Yes, I do believe so."
         else:
             reply['responses'] = "No, I don't believe that's true."
         self.reply(reply)
