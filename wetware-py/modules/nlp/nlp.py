@@ -24,31 +24,31 @@ class WetwareWorker(Worker):
             if frame.headers['destination'] == self.args['neuron_topic']:
                 self.process_neuron_operation(message)
             elif frame.headers['destination'] == self.args['nlp_topic']:
-                self.process_nlp_operation(message)
+                self.process_nlp_statement(message)
         except:
             self.reply({'responses': "I'm terribly sorry.  I'm feeling faint.  Perhaps I should see a doctor..."})
             logging.error(sys.exc_info()[0])
             logging.error(sys.exc_info()[1])
 
-    def process_nlp_operation(self, message):
+    def process_nlp_statement(self, message):
         for statement in message['statements']:
-            if '?' not in statement:
-                self.compose_indicative_nlp_statement(statement)
+            if '?' in statement:
+                self.parse_interrogative_statement(statement)
             else:
-                self.compose_interrogative_nlp_statement(statement)
+                self.parse_indicative_statement(statement)
 
-    def compose_interrogative_nlp_statement(self, statement):
+    def parse_interrogative_statement(self, statement):
         words = statement.split(' ')
         if words[0] == 'Does':
-            self.compose_does_statement(words)
+            self.parse_question_does(words)
         elif words[0] == 'Where':
-            self.compose_where_statement(words)
+            self.parse_question_where(words)
         elif words[0] == 'Is':
-            self.compose_is_statement(words)
+            self.parse_question_is(words)
         else:
             self.reply({'responses': "I'm terribly sorry, but I don't understand the question."})
 
-    def compose_does_statement(self, words):
+    def parse_question_does(self, words):
         try:
             does = words[0] #will disregard this
             subj = words[1].strip()
@@ -58,7 +58,7 @@ class WetwareWorker(Worker):
             output_data['statements'].append(self.compose_gremlin_statement('g.V().has("name","' + subj + '").both("' + pred + '").has("name","' + obj + '")'))
             output_data['statements'].append(self.compose_gremlin_statement('g.V().has("name","' + subj + '").both("' + pred + '").both("' + pred + '").simplePath().has("name","' + obj + '")'))
             output_data['statements'].append(self.compose_gremlin_statement('g.V().has("name","' + subj + '").both("' + pred + '").both("' + pred + '").both("' + pred + '").simplePath().has("name","' + obj + '")'))
-            self.publish(output_data, expect_reply=True, callback=self.interpret_audrey_response)
+            self.publish(output_data, expect_reply=True, callback=self.interpret_does_response)
         except AttributeError:
             self.reply({'responses': "I'm terribly sorry.  I'm feeling faint.  Perhaps I should see a doctor..."})
             logging.error(sys.exc_info()[0])
@@ -66,7 +66,7 @@ class WetwareWorker(Worker):
         except Exception:
             self.reply({'responses': "I'm terribly sorry, but I don't understand the question."})
 
-    def compose_is_statement(self, words):
+    def parse_question_is(self, words):
         try:
             is_word = words[0] #will disregard this
             subj = words[1].strip()
@@ -79,7 +79,7 @@ class WetwareWorker(Worker):
             self.reply({'responses': "I'm terribly sorry, but I don't understand the question."})
 
     #TODO: this is broken
-    def compose_where_statement(self, words):
+    def parse_question_where(self, words):
         try:
             where_is = words[0], words[1] #will disregard this
             obj = words[3].strip()[:-1] #take off the question mark
@@ -90,8 +90,7 @@ class WetwareWorker(Worker):
         except Exception:
             self.reply({'responses': "I'm terribly sorry, but I don't understand the question."})
 
-    def compose_indicative_nlp_statement(self, statement):
-        #we'll consider this is indicative statement
+    def parse_indicative_statement(self, statement):
         words = statement.split(' ')
         output_data = {'statements': []}
         try:
@@ -102,10 +101,10 @@ class WetwareWorker(Worker):
             if '.' in obj:
                 obj = obj[:-1]
             if pred == "is":
-                #"is" is just a boolean property
+                #"is" will become a boolean property on node
                 output_data['statements'].append(self.add_vertex_property_statement(subj, obj, True))
             else:
-                #adding an edge adds the vertices, too
+                #otherwise, add nodes and edge (add_edge adds nodes and edge)
                 output_data['statements'].append(self.add_edge_statement(subj, obj, pred))
             self.publish(output_data, expect_reply=True, callback=self.acknowledge_response)
         except WetwareException:
@@ -149,7 +148,7 @@ class WetwareWorker(Worker):
             reply['responses'] = "Hmm, apologies...I've...lost my train of thought..."
         self.reply(reply)
 
-    def compose_standard_statement(self, statement):
+    def compose_raw_statement(self, statement):
         output_statement = {'fxns': []}
         for input_function in statement.split('.'):
             #these are the Tinker/TitanGraphs or traversal()
@@ -207,8 +206,8 @@ class WetwareWorker(Worker):
         toGremlin = toGremlinMess[beginToGremlin:endToGremlin]
         # wrap them with a bow
         addedge_statement['fxn'] = 'addEdge'
-        addedge_statement['fromVertex'] = self.compose_standard_statement(fromGremlin)
-        addedge_statement['toVertex'] = self.compose_standard_statement(toGremlin)
+        addedge_statement['fromVertex'] = self.compose_raw_statement(fromGremlin)
+        addedge_statement['toVertex'] = self.compose_raw_statement(toGremlin)
         addedge_statement['label'] = label
         addedge_statement['properties'] = properties
         output_statement['fxns'].append(addedge_statement)
@@ -219,13 +218,13 @@ class WetwareWorker(Worker):
         if 'addEdge' in raw_statement:
             statement = self.compose_addedge_statement(raw_statement)
         else:
-            statement = self.compose_standard_statement(raw_statement)
+            statement = self.compose_raw_statement(raw_statement)
         statement['api'] = 'blueprints'
         return statement
 
     def compose_gremlin_statement(self, raw_statement):
         #no special cases for Gremlin
-        statement = self.compose_standard_statement(raw_statement)
+        statement = self.compose_raw_statement(raw_statement)
         statement['api'] = 'gremlin'
         return statement
 
@@ -238,7 +237,7 @@ class WetwareWorker(Worker):
             reply['responses'] = "No, I don't believe that's true."
         self.reply(reply)
 
-    def interpret_audrey_response(self, frame):
+    def interpret_does_response(self, frame):
         #interpret response
         #respond to UI
         # if first answer if yes, conf = 1.0
