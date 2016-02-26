@@ -56,6 +56,9 @@ public class Neuron {
             case "addVertex":
                 retVals.push(neuronAddVertex(it['name']));
                 break;
+            case "addVertexProperty":
+                retVals.push(neuronAddVertexProperty(it['name'],it['property'],it['value']));
+                break;
             case "addEdge":
                 retVals.push(neuronEdgeVertex(it['fromVertex'],it['toVertex'],it['label']));
                 break;
@@ -71,6 +74,11 @@ public class Neuron {
         } else {
             return graph.addVertex("name", name);
         }
+    }
+
+    public neuronAddVertexProperty(name, key, value) {
+        def vertex = neuronAddVertex(name);
+        vertex.property(key, value);
     }
 
     public neuronEdgeVertex(fromName, toName, label) {
