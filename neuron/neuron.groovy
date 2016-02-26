@@ -59,6 +59,9 @@ public class Neuron {
             case "addVertexProperty":
                 retVals.push(neuronAddVertexProperty(it['name'],it['property'],it['value']));
                 break;
+            case "getVertexProperty":
+                retVals.push(neuronGetVertexProperty(it['name'],it['property']));
+                break;
             case "addEdge":
                 retVals.push(neuronEdgeVertex(it['fromVertex'],it['toVertex'],it['label']));
                 break;
@@ -78,7 +81,19 @@ public class Neuron {
 
     public neuronAddVertexProperty(name, key, value) {
         def vertex = neuronAddVertex(name);
+        println "Adding propery: " + key;
         vertex.property(key, value);
+        println "Property added: " + value;
+        return vertex;
+    }
+
+    public neuronGetVertexProperty(name, key) {
+        def prop_iter = g.V().has("name", name).values(key);
+        if (prop_iter) {
+            return prop_iter.next();
+        } else {
+            return "";
+        }
     }
 
     public neuronEdgeVertex(fromName, toName, label) {
@@ -157,7 +172,8 @@ public class Neuron {
                     if (statement["api"] == "blueprints" ||
                         statement["api"] == "neuron") {
                         if (result) {
-                            result = "OK";
+                            //TODO: figure out how to return results better
+                            //result = "OK";
                         } else {
                             result = "";
                         }
