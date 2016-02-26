@@ -44,6 +44,8 @@ class WetwareWorker(Worker):
             self.parse_question_where(words)
         elif words[0] == 'Is':
             self.parse_question_is(words)
+        elif words[0] == 'What':
+            self.parse_question_what_is_the(words)
         else:
             self.reply({'responses': "I'm terribly sorry, but I don't understand the question."})
 
@@ -75,15 +77,28 @@ class WetwareWorker(Worker):
             self.reply({'responses': "I'm terribly sorry, but I don't understand the question."})
             logging.exception("Caught Exception:")
 
+    def parse_question_what_is_the(self, words):
+        try:
+            logging.debug(words)
+            #0,1,2 What is the
+            key = words[3].strip()
+            #4 of
+            obj = words[5].strip()[:-1]
+            output_data = {'statements': []}
+            output_data['statements'].append(self.get_vertex_property_statement(obj, key))
+            self.publish(output_data, expect_reply=True, callback=self.interpret_audrey_what_is_the)
+        except:
+            self.reply({'responses': "I'm terribly sorry, but I don't understand the question."})
+            logging.exception("Caught Exception:")
+
     #TODO: this is broken
     def parse_question_where(self, words):
         try:
-            where_is = words[0], words[1] #will disregard this
-            obj = words[3].strip()[:-1] #take off the question mark
+            #0,1 Where is
+            subj = words[2].strip()[:-1]
             output_data = {'statements': []}
-            output_data['statements'].append(self.compose_gremlin_statement(
-                'g.V().has("name","' + obj + '").value("location")'))
-            self.publish(output_data, expect_reply=True, callback=self.interpret_audrey_response)
+            output_data['statements'].append(self.get_vertex_property_statement(subj, "location"))
+            self.publish(output_data, expect_reply=True, callback=self.interpret_audrey_where)
         except:
             self.reply({'responses': "I'm terribly sorry, but I don't understand the question."})
             logging.exception("Caught Exception:")
@@ -131,6 +146,14 @@ class WetwareWorker(Worker):
                'name': name,
                'property': prop_name,
                'value': prop_value }
+        statement['fxns'].append(fxn)
+        return statement
+
+    def get_vertex_property_statement(self, name, prop_name):
+        statement = {'fxns': [], 'api': 'neuron'}
+        fxn = {'fxn': 'getVertexProperty',
+               'name': name,
+               'property': prop_name }
         statement['fxns'].append(fxn)
         return statement
 
@@ -235,6 +258,27 @@ class WetwareWorker(Worker):
             reply['responses'] = "Yes, I do believe so."
         else:
             reply['responses'] = "No, I don't believe that's true."
+        self.reply(reply)
+
+    def interpret_audrey_where(self, frame):
+        reply = {}
+        responses = json.loads(frame.body)['responses']
+        location = responses[0]
+        #TODO: this empty list parsing needs to change
+        if location and location != "[]":
+            reply['responses'] = "Why it's right at {0}.".format(location)
+        else:
+            reply['responses'] = "You know, I don't know where it is!"
+        self.reply(reply)
+
+    def interpret_audrey_what_is_the(self, frame):
+        reply = {}
+        responses = json.loads(frame.body)['responses']
+        value = responses[0]
+        if value:
+            reply['responses'] = "It appears to be {0}.".format(value)
+        else:
+            reply['responses'] = "You know, I'm just not sure."
         self.reply(reply)
 
     def interpret_does_response(self, frame):
