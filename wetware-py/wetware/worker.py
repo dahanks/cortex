@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import sys
 import os
 import argparse
 import ConfigParser
@@ -248,26 +247,6 @@ class Worker(object):
 
         # returning frame so subclass can have it when overriding this function
         return frame
-
-        ###No, I don't think we want to allow this remote access right now...
-        # if 'operation' in message:
-        #     operation = message['operation'].lower()
-        #     if operation == "quit" or operation == "exit":
-        #         logging.info("Received command to exit. Disconnecting...")
-        #         sys.exit(0)
-
-        #     # TODO: need some security to messages that can run arbitrary cmds!
-        #     elif operation.startswith("command"):
-        #         command = message['command']
-        #         command_args = command.split()
-        #         # log if the message contained a log_file; otherwise, don't log
-        #         log = None if 'log_file' not in message else message['log_file']
-        #         if operation == 'command_sync':
-        #             logging.info("Received message to run a synchronous command")
-        #             return_code = run_command(command_args, sync=True, log_file=log)
-        #         elif operation == 'command_async':
-        #             logging.info("Received message to run an asynchronous command")
-        #             pid = run_command(command_args, sync=False, log_file=log)
 
     def handle_reply(self, frame):
         """Handles a reply over a temp queue to a request you already submitted
