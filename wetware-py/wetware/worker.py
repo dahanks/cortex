@@ -205,6 +205,11 @@ class Worker(object):
         be placed in a queue (a queue of temp queue topics, yes).  To reply
         to the requestor, call self.reply() instead of self.publish().
 
+        Be sure to *AT LEAST* check that your frame header destination is what
+        you expect so that you can filter out replies on temp-queues.  Otherwise,
+        you'll call self.on_message() for replies the same you would for original
+        messages.
+
         Returns False if message fails verification.
         Otherwise returns the message frame so subclass has access to it on
         overriding this function.
