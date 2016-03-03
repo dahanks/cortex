@@ -8,7 +8,7 @@ from wetware.worker import Worker
 from wetware.worker import WetwareException
 from wetware.worker import FrameException
 
-from wetware.neuron import Statement
+from wetware.neuron import Statements
 
 class WetwareWorker(Worker):
 
@@ -59,7 +59,7 @@ class WetwareWorker(Worker):
                 'g.V().has("name","' + subj + '").both("' + pred + '").both("' + pred + '").simplePath().has("name","' + obj + '")',
                 'g.V().has("name","' + subj + '").both("' + pred + '").both("' + pred + '").both("' + pred + '").simplePath().has("name","' + obj + '")'
             ]
-            statements = Statement()
+            statements = Statements()
             statements.gremlin(*gremlins)
             self.publish(statements, expect_reply=True, callback=self.interpret_does_response)
         except:
@@ -72,7 +72,7 @@ class WetwareWorker(Worker):
             subj = words[1].strip()
             key = words[2].strip()[:-1]
             gremlin = 'g.V().has("name","' + subj + '").values("' + key + '")'
-            statements = Statement()
+            statements = Statements()
             statements.gremlin(gremlin)
             self.publish(statements, expect_reply=True, callback=self.interpret_audrey_is)
         except:
@@ -85,7 +85,7 @@ class WetwareWorker(Worker):
             key = words[3].strip()
             #4 of
             obj = words[5].strip()[:-1]
-            statements = Statement()
+            statements = Statements()
             statements.get_vertex_property(obj, key)
             self.publish(statements, expect_reply=True, callback=self.interpret_audrey_what_is_the)
         except:
@@ -96,7 +96,7 @@ class WetwareWorker(Worker):
         try:
             #0,1 Where is
             subj = words[2].strip()[:-1]
-            statements = Statement()
+            statements = Statements()
             statements.get_vertex_property(subj, "location")
             self.publish(statements, expect_reply=True, callback=self.interpret_audrey_where)
         except:
@@ -112,7 +112,7 @@ class WetwareWorker(Worker):
             #take out the period
             if '.' in obj:
                 obj = obj[:-1]
-            statements = Statement()
+            statements = Statements()
             if pred == "is":
                 #"is" will become a boolean property on node
                 statements.add_vertex_property(subj, obj, True)

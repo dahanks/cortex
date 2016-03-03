@@ -6,9 +6,9 @@ import logging
 # under the key 'statements', since that's what the Neuron
 # API dictates.  All member functions add statements to
 # 'statements', then you publish the Statement object.
-class Statement(dict):
+class Statements(dict):
     def __init__(self, *arg, **kwargs):
-        super(Statement, self).__init__(self, *arg, **kwargs)
+        super(Statements, self).__init__(self, *arg, **kwargs)
         self['statements'] = []
 
     #Add a vertex and guarantee that it is unique by referring
