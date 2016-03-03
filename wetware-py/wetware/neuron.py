@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+import logging
+
 def add_vertex_statement(*names):
     output_data = {'statements': []}
     statement = {'fxns': [], 'api': 'neuron'}
@@ -105,8 +107,11 @@ def compose_blueprints_statement(raw_statement):
     statement['api'] = 'blueprints'
     return statement
 
-def compose_gremlin_statement(raw_statement):
-    #no special cases for Gremlin
-    statement = compose_raw_statement(raw_statement)
-    statement['api'] = 'gremlin'
-    return statement
+def compose_gremlin_statement(*raw_statements):
+    output_data = {'statements': []}
+    for raw_statement in raw_statements:
+        #no special cases for Gremlin
+        statement = compose_raw_statement(raw_statement)
+        statement['api'] = 'gremlin'
+        output_data['statements'].append(statement)
+    return output_data

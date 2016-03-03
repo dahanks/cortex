@@ -56,10 +56,12 @@ class WetwareWorker(Worker):
             subj = words[1].strip()
             pred = words[2].strip() + 's' #add back indicative verb conj 's'
             obj = words[3].strip()[:-1] #take off the question mark
-            output_data = {'statements': []}
-            output_data['statements'].append(Neuron.compose_gremlin_statement('g.V().has("name","' + subj + '").both("' + pred + '").has("name","' + obj + '")'))
-            output_data['statements'].append(Neuron.compose_gremlin_statement('g.V().has("name","' + subj + '").both("' + pred + '").both("' + pred + '").simplePath().has("name","' + obj + '")'))
-            output_data['statements'].append(Neuron.compose_gremlin_statement('g.V().has("name","' + subj + '").both("' + pred + '").both("' + pred + '").both("' + pred + '").simplePath().has("name","' + obj + '")'))
+            statements = [
+                'g.V().has("name","' + subj + '").both("' + pred + '").has("name","' + obj + '")',
+                'g.V().has("name","' + subj + '").both("' + pred + '").both("' + pred + '").simplePath().has("name","' + obj + '")',
+                'g.V().has("name","' + subj + '").both("' + pred + '").both("' + pred + '").both("' + pred + '").simplePath().has("name","' + obj + '")'
+            ]
+            output_data = Neuron.compose_gremlin_statement(*statements)
             self.publish(output_data, expect_reply=True, callback=self.interpret_does_response)
         except:
             self.reply({'responses': "I'm terribly sorry, but I don't understand the question."})
@@ -70,9 +72,8 @@ class WetwareWorker(Worker):
             is_word = words[0] #will disregard this
             subj = words[1].strip()
             key = words[2].strip()[:-1]
-            output_data = {'statements': []}
-            output_data['statements'].append(Neuron.compose_gremlin_statement(
-                'g.V().has("name","' + subj + '").values("' + key + '")'))
+            statement = 'g.V().has("name","' + subj + '").values("' + key + '")'
+            output_data = Neuron.compose_gremlin_statement(statement)
             self.publish(output_data, expect_reply=True, callback=self.interpret_audrey_is)
         except:
             self.reply({'responses': "I'm terribly sorry, but I don't understand the question."})
@@ -143,7 +144,7 @@ class WetwareWorker(Worker):
             if "addVertex" in raw_statement or 'addEdge' in raw_statement:
                 output_data['statements'].append(Neuron.compose_blueprints_statement(raw_statement))
             else:
-                output_data['statements'].append(Neuron.compose_gremlin_statement(raw_statement))
+                output_data = Neuron.compose_gremlin_statement(raw_statement)
         logging.debug(output_data)
         self.publish(output_data, expect_reply=True)
 
