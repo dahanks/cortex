@@ -1,37 +1,45 @@
 #!/usr/bin/env python
 
 def add_vertex_statement(*names):
+    output_data = {'statements': []}
     statement = {'fxns': [], 'api': 'neuron'}
     for name in names:
         fxn = {'fxn': 'addVertex', 'name': name}
         statement['fxns'].append(fxn)
-    return statement
+    output_data['statements'].append(statement)
+    return output_data
 
 def add_edge_statement(from_vertex, to_vertex, label):
+    output_data = {'statements': []}
     statement = {'fxns': [], 'api': 'neuron'}
     fxn = {'fxn': 'addEdge',
            'fromVertex': from_vertex,
            'toVertex': to_vertex,
            'label': label }
     statement['fxns'].append(fxn)
-    return statement
+    output_data['statements'].append(statement)
+    return output_data
 
 def add_vertex_property_statement(name, prop_name, prop_value):
+    output_data = {'statements': []}
     statement = {'fxns': [], 'api': 'neuron'}
     fxn = {'fxn': 'addVertexProperty',
            'name': name,
            'property': prop_name,
            'value': prop_value }
     statement['fxns'].append(fxn)
-    return statement
+    output_data['statements'].append(statement)
+    return output_data
 
 def get_vertex_property_statement(name, prop_name):
+    output_data = {'statements': []}
     statement = {'fxns': [], 'api': 'neuron'}
     fxn = {'fxn': 'getVertexProperty',
            'name': name,
            'property': prop_name }
     statement['fxns'].append(fxn)
-    return statement
+    output_data['statements'].append(statement)
+    return output_data
 
 def compose_raw_statement(statement):
     output_statement = {'fxns': []}

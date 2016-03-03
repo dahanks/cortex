@@ -85,8 +85,7 @@ class WetwareWorker(Worker):
             key = words[3].strip()
             #4 of
             obj = words[5].strip()[:-1]
-            output_data = {'statements': []}
-            output_data['statements'].append(Neuron.get_vertex_property_statement(obj, key))
+            output_data = Neuron.get_vertex_property_statement(obj, key)
             self.publish(output_data, expect_reply=True, callback=self.interpret_audrey_what_is_the)
         except:
             self.reply({'responses': "I'm terribly sorry, but I don't understand the question."})
@@ -97,8 +96,7 @@ class WetwareWorker(Worker):
         try:
             #0,1 Where is
             subj = words[2].strip()[:-1]
-            output_data = {'statements': []}
-            output_data['statements'].append(Neuron.get_vertex_property_statement(subj, "location"))
+            output_data = Neuron.get_vertex_property_statement(subj, "location")
             self.publish(output_data, expect_reply=True, callback=self.interpret_audrey_where)
         except:
             self.reply({'responses': "I'm terribly sorry, but I don't understand the question."})
@@ -106,7 +104,6 @@ class WetwareWorker(Worker):
 
     def parse_indicative_statement(self, statement):
         words = statement.split(' ')
-        output_data = {'statements': []}
         try:
             subj = words[0].strip()
             pred = words[1].strip()
@@ -116,10 +113,11 @@ class WetwareWorker(Worker):
                 obj = obj[:-1]
             if pred == "is":
                 #"is" will become a boolean property on node
-                output_data['statements'].append(Neuron.add_vertex_property_statement(subj, obj, True))
+                output_data = Neuron.add_vertex_property_statement(subj, obj, True)
             else:
                 #otherwise, add nodes and edge (add_edge adds nodes and edge)
-                output_data['statements'].append(Neuron.add_edge_statement(subj, obj, pred))
+                output_data = Neuron.add_edge_statement(subj, obj, pred)
+                logging.debug(output_data)
             self.publish(output_data, expect_reply=True, callback=self.acknowledge_response)
         except:
             self.reply({'responses': "I'm having trouble understanding what it is you want to say..."})
