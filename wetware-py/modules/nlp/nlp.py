@@ -142,7 +142,7 @@ class WetwareWorker(Worker):
         output_data = { 'statements': []}
         for raw_statement in input_message['statements']:
             if "addVertex" in raw_statement or 'addEdge' in raw_statement:
-                output_data['statements'].append(Neuron.compose_blueprints_statement(raw_statement))
+                output_data = Neuron.compose_blueprints_statement(raw_statement)
             else:
                 output_data = Neuron.compose_gremlin_statement(raw_statement)
         logging.debug(output_data)

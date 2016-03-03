@@ -43,6 +43,8 @@ def get_vertex_property_statement(name, prop_name):
     output_data['statements'].append(statement)
     return output_data
 
+#SHOULD BE PRIVATE
+#CANNOT TAKE MULTIPLE STATEMENTS
 def compose_raw_statement(statement):
     output_statement = {'fxns': []}
     for input_function in statement.split('.'):
@@ -66,6 +68,8 @@ def compose_raw_statement(statement):
             output_statement['fxns'].append(output_function)
     return output_statement
 
+#SHOULD BE PRIVATE
+#CANNOT TAKE MULTIPLE STATEMENTS
 def compose_addedge_statement(raw_statement):
     #when neuron sees it's blueprints, it will check if fxn is addEdge
     # and handle this different api accordingly
@@ -98,15 +102,22 @@ def compose_addedge_statement(raw_statement):
     output_statement['fxns'].append(addedge_statement)
     return output_statement
 
-def compose_blueprints_statement(raw_statement):
-    #addEdge is a special case, addVertex is not (and don't expect others to be)
-    if 'addEdge' in raw_statement:
-        statement = compose_addedge_statement(raw_statement)
-    else:
-        statement = compose_raw_statement(raw_statement)
-    statement['api'] = 'blueprints'
-    return statement
+#can take multiple statements
+#HIGHLY DISCOURAGED because it won't check for redundancy
+def compose_blueprints_statement(*raw_statements):
+    output_data = {'statements': []}
+    for raw_statement in raw_statements:
+        #addEdge is a special case, addVertex is not (and don't expect others to be)
+        if 'addEdge' in raw_statement:
+            statement = compose_addedge_statement(raw_statement)
+        else:
+            statement = compose_raw_statement(raw_statement)
+        statement['api'] = 'blueprints'
+        output_data['statements'].append(statement)
+    return output_data
 
+#can take multiple statements
+#use this as much as you want (probably)
 def compose_gremlin_statement(*raw_statements):
     output_data = {'statements': []}
     for raw_statement in raw_statements:
