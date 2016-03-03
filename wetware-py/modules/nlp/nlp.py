@@ -7,7 +7,8 @@ import sys
 from wetware.worker import Worker
 from wetware.worker import WetwareException
 from wetware.worker import FrameException
-import wetware.neuron as Neuron
+
+from wetware.neuron import Statement
 
 class WetwareWorker(Worker):
 
@@ -53,13 +54,14 @@ class WetwareWorker(Worker):
             subj = words[1].strip()
             pred = words[2].strip() + 's' #add back indicative verb conj 's'
             obj = words[3].strip()[:-1] #take off the question mark
-            statements = [
+            gremlins = [
                 'g.V().has("name","' + subj + '").both("' + pred + '").has("name","' + obj + '")',
                 'g.V().has("name","' + subj + '").both("' + pred + '").both("' + pred + '").simplePath().has("name","' + obj + '")',
                 'g.V().has("name","' + subj + '").both("' + pred + '").both("' + pred + '").both("' + pred + '").simplePath().has("name","' + obj + '")'
             ]
-            output_data = Neuron.compose_gremlin_statement(*statements)
-            self.publish(output_data, expect_reply=True, callback=self.interpret_does_response)
+            statements = Statement()
+            statements.gremlin(*gremlins)
+            self.publish(statements, expect_reply=True, callback=self.interpret_does_response)
         except:
             self.reply({'responses': "I'm terribly sorry, but I don't understand the question."})
             logging.exception("Caught Exception:")
@@ -69,22 +71,23 @@ class WetwareWorker(Worker):
             is_word = words[0] #will disregard this
             subj = words[1].strip()
             key = words[2].strip()[:-1]
-            statement = 'g.V().has("name","' + subj + '").values("' + key + '")'
-            output_data = Neuron.compose_gremlin_statement(statement)
-            self.publish(output_data, expect_reply=True, callback=self.interpret_audrey_is)
+            gremlin = 'g.V().has("name","' + subj + '").values("' + key + '")'
+            statements = Statement()
+            statements.gremlin(gremlin)
+            self.publish(statements, expect_reply=True, callback=self.interpret_audrey_is)
         except:
             self.reply({'responses': "I'm terribly sorry, but I don't understand the question."})
             logging.exception("Caught Exception:")
 
     def parse_question_what_is_the(self, words):
         try:
-            logging.debug(words)
             #0,1,2 What is the
             key = words[3].strip()
             #4 of
             obj = words[5].strip()[:-1]
-            output_data = Neuron.get_vertex_property_statement(obj, key)
-            self.publish(output_data, expect_reply=True, callback=self.interpret_audrey_what_is_the)
+            statements = Statement()
+            statements.get_vertex_property(obj, key)
+            self.publish(statements, expect_reply=True, callback=self.interpret_audrey_what_is_the)
         except:
             self.reply({'responses': "I'm terribly sorry, but I don't understand the question."})
             logging.exception("Caught Exception:")
@@ -93,8 +96,9 @@ class WetwareWorker(Worker):
         try:
             #0,1 Where is
             subj = words[2].strip()[:-1]
-            output_data = Neuron.get_vertex_property_statement(subj, "location")
-            self.publish(output_data, expect_reply=True, callback=self.interpret_audrey_where)
+            statements = Statement()
+            statements.get_vertex_property(subj, "location")
+            self.publish(statements, expect_reply=True, callback=self.interpret_audrey_where)
         except:
             self.reply({'responses': "I'm terribly sorry, but I don't understand the question."})
             logging.exception("Caught Exception:")
@@ -108,14 +112,14 @@ class WetwareWorker(Worker):
             #take out the period
             if '.' in obj:
                 obj = obj[:-1]
+            statements = Statement()
             if pred == "is":
                 #"is" will become a boolean property on node
-                output_data = Neuron.add_vertex_property_statement(subj, obj, True)
+                statements.add_vertex_property(subj, obj, True)
             else:
                 #otherwise, add nodes and edge (add_edge adds nodes and edge)
-                output_data = Neuron.add_edge_statement(subj, pred, obj)
-                logging.debug(output_data)
-            self.publish(output_data, expect_reply=True, callback=self.acknowledge_response)
+                statements.add_edge(subj, pred, obj)
+            self.publish(statements, expect_reply=True, callback=self.acknowledge_response)
         except:
             self.reply({'responses': "I'm having trouble understanding what it is you want to say..."})
             logging.exception("Caught Exception:")
