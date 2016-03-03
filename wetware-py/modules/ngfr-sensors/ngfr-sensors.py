@@ -6,6 +6,7 @@ import paho.mqtt.client as mqtt
 
 from wetware.worker import Worker
 from wetware.worker import ApolloConnection
+import wetware.neuron as Neuron
 
 class WetwareWorker(Worker):
 
@@ -39,25 +40,15 @@ class WetwareWorker(Worker):
         lon = message['longitude']
         lat_lon = "[{0},{1}]".format(lat, lon)
         output_data = {'statements': []}
-        output_data['statements'].append(self.add_vertex_property_statement(node, "location", str(lat_lon)))
+        output_data['statements'].append(Neuron.add_vertex_property_statement(node, "location", str(lat_lon)))
         self.publish(output_data)
 
     def parse_sensortag_data(self, message):
         node = message['clientname']
         humidity = message['humidity']['relative_humidity']
         output_data = {'statements': []}
-        output_data['statements'].append(self.add_vertex_property_statement(node, "humidity", str(humidity)))
+        output_data['statements'].append(Neuron.add_vertex_property_statement(node, "humidity", str(humidity)))
         self.publish(output_data)
-
-    def add_vertex_property_statement(self, name, prop_name, prop_value):
-        statement = {'fxns': [], 'api': 'neuron'}
-        fxn = {'fxn': 'addVertexProperty',
-               'name': name,
-               'property': prop_name,
-               'value': prop_value }
-        logging.debug(fxn)
-        statement['fxns'].append(fxn)
-        return statement
 
 def main():
     logging.basicConfig(level=logging.DEBUG)
