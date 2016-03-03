@@ -39,15 +39,13 @@ class WetwareWorker(Worker):
         lat = message['latitude']
         lon = message['longitude']
         lat_lon = "[{0},{1}]".format(lat, lon)
-        output_data = {'statements': []}
-        output_data['statements'].append(Neuron.add_vertex_property_statement(node, "location", str(lat_lon)))
+        output_data = Neuron.add_vertex_property_statement(node, "location", str(lat_lon))
         self.publish(output_data)
 
     def parse_sensortag_data(self, message):
         node = message['clientname']
         humidity = message['humidity']['relative_humidity']
-        output_data = {'statements': []}
-        output_data['statements'].append(Neuron.add_vertex_property_statement(node, "humidity", str(humidity)))
+        output_data = Neuron.add_vertex_property_statement(node, "humidity", str(humidity))
         self.publish(output_data)
 
 def main():
