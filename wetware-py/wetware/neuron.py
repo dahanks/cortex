@@ -55,9 +55,36 @@ def get_vertex_property_statement(name, prop_name):
     output_data['statements'].append(statement)
     return output_data
 
-#SHOULD BE PRIVATE
-#CANNOT TAKE MULTIPLE STATEMENTS
-def compose_raw_statement(statement):
+#Composes a list Gremlin statements to run, and each will be returned as a
+# reply.  Multiple statements can be passed as arguments.
+def compose_gremlin_statement(*raw_statements):
+    output_data = {'statements': []}
+    for raw_statement in raw_statements:
+        #no special cases for Gremlin
+        statement = __compose_raw_statement(raw_statement)
+        statement['api'] = 'gremlin'
+        output_data['statements'].append(statement)
+    return output_data
+
+#DISCOURAGED USE
+#Composes a list of Blueprints statements.  Use of this function is discouraged
+# because it circumvents the true Neuron API by running the statements "raw."
+# Things like preventing duplication are not enforced.
+def compose_blueprints_statement(*raw_statements):
+    output_data = {'statements': []}
+    for raw_statement in raw_statements:
+        #addEdge is a special case, addVertex is not (and don't expect others to be)
+        if 'addEdge' in raw_statement:
+            statement = __compose_addedge_statement(raw_statement)
+        else:
+            statement = __compose_raw_statement(raw_statement)
+        statement['api'] = 'blueprints'
+        output_data['statements'].append(statement)
+    return output_data
+
+#This private function is used to formulate a Gremlin or Blueprints statement
+# (with exceptions).  It is not meant to be called from the outside.
+def __compose_raw_statement(statement):
     output_statement = {'fxns': []}
     for input_function in statement.split('.'):
         #these are the Tinker/TitanGraphs or traversal()
@@ -80,9 +107,11 @@ def compose_raw_statement(statement):
             output_statement['fxns'].append(output_function)
     return output_statement
 
-#SHOULD BE PRIVATE
-#CANNOT TAKE MULTIPLE STATEMENTS
-def compose_addedge_statement(raw_statement):
+#DEPRECATED
+#This private function is used to handle the exception case when a raw
+# Blueprints string is calling "addEdge()". It is not meant to be called from
+# the outside.  It is also inferior to the add_edge support above.
+def __compose_addedge_statement(raw_statement):
     #when neuron sees it's blueprints, it will check if fxn is addEdge
     # and handle this different api accordingly
     output_statement = {'fxns': []}
@@ -107,34 +136,9 @@ def compose_addedge_statement(raw_statement):
     toGremlin = toGremlinMess[beginToGremlin:endToGremlin]
     # wrap them with a bow
     addedge_statement['fxn'] = 'addEdge'
-    addedge_statement['fromVertex'] = compose_raw_statement(fromGremlin)
-    addedge_statement['toVertex'] = compose_raw_statement(toGremlin)
+    addedge_statement['fromVertex'] = __compose_raw_statement(fromGremlin)
+    addedge_statement['toVertex'] = __compose_raw_statement(toGremlin)
     addedge_statement['label'] = label
     addedge_statement['properties'] = properties
     output_statement['fxns'].append(addedge_statement)
     return output_statement
-
-#can take multiple statements
-#HIGHLY DISCOURAGED because it won't check for redundancy
-def compose_blueprints_statement(*raw_statements):
-    output_data = {'statements': []}
-    for raw_statement in raw_statements:
-        #addEdge is a special case, addVertex is not (and don't expect others to be)
-        if 'addEdge' in raw_statement:
-            statement = compose_addedge_statement(raw_statement)
-        else:
-            statement = compose_raw_statement(raw_statement)
-        statement['api'] = 'blueprints'
-        output_data['statements'].append(statement)
-    return output_data
-
-#can take multiple statements
-#use this as much as you want (probably)
-def compose_gremlin_statement(*raw_statements):
-    output_data = {'statements': []}
-    for raw_statement in raw_statements:
-        #no special cases for Gremlin
-        statement = compose_raw_statement(raw_statement)
-        statement['api'] = 'gremlin'
-        output_data['statements'].append(statement)
-    return output_data
