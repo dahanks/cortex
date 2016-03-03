@@ -2,6 +2,9 @@
 
 import logging
 
+#Add a vertex and guarantee that it is unique by referring
+# to the "name" property (which will be our vertex index)"
+#Can make multiple vertices in the same call.
 def add_vertex_statement(*names):
     output_data = {'statements': []}
     statement = {'fxns': [], 'api': 'neuron'}
@@ -11,6 +14,10 @@ def add_vertex_statement(*names):
     output_data['statements'].append(statement)
     return output_data
 
+#Add an edge between two vertices and guarantee that it is unique
+# by making sure that only one edge with the "label" exists between
+# two vertices with the same "name" property.
+#Creating an Edge will also create the Vertices, if they don't exist.
 def add_edge_statement(from_vertex, to_vertex, label):
     output_data = {'statements': []}
     statement = {'fxns': [], 'api': 'neuron'}
@@ -22,6 +29,9 @@ def add_edge_statement(from_vertex, to_vertex, label):
     output_data['statements'].append(statement)
     return output_data
 
+#Add a property of the specified key and value to the Vertex with the
+# "name" provided.  If the Vertex with "name" does not exist, it will
+# be created.
 def add_vertex_property_statement(name, prop_name, prop_value):
     output_data = {'statements': []}
     statement = {'fxns': [], 'api': 'neuron'}
@@ -33,6 +43,8 @@ def add_vertex_property_statement(name, prop_name, prop_value):
     output_data['statements'].append(statement)
     return output_data
 
+#Return the value of the property specified on the Vertex that has the
+# "name" provided.
 def get_vertex_property_statement(name, prop_name):
     output_data = {'statements': []}
     statement = {'fxns': [], 'api': 'neuron'}
