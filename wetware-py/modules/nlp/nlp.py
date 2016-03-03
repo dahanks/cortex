@@ -113,7 +113,7 @@ class WetwareWorker(Worker):
                 output_data = Neuron.add_vertex_property_statement(subj, obj, True)
             else:
                 #otherwise, add nodes and edge (add_edge adds nodes and edge)
-                output_data = Neuron.add_edge_statement(subj, obj, pred)
+                output_data = Neuron.add_edge_statement(subj, pred, obj)
                 logging.debug(output_data)
             self.publish(output_data, expect_reply=True, callback=self.acknowledge_response)
         except:

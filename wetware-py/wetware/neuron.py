@@ -18,20 +18,33 @@ def add_vertex_statement(*names):
 # by making sure that only one edge with the "label" exists between
 # two vertices with the same "name" property.
 #Creating an Edge will also create the Vertices, if they don't exist.
-def add_edge_statement(from_vertex, to_vertex, label):
+#This function takes either:
+#  3 arguments: from_vertex, label, to_vertex
+# OR
+#  a list of 3-tuples, each as (from_vertex, label, to_vertex)
+def add_edge_statement(*tuples):
     output_data = {'statements': []}
     statement = {'fxns': [], 'api': 'neuron'}
-    fxn = {'fxn': 'addEdge',
-           'fromVertex': from_vertex,
-           'toVertex': to_vertex,
-           'label': label }
-    statement['fxns'].append(fxn)
+    #If you only want one edge, give the 3 args (not in a tuple), and
+    # we'll handle the rest by making it one proper tuple in a list.
+    if not isinstance(tuples[0], tuple):
+        #This will throw an exception if you don't put it at least 3 args
+        # ...and that's good!
+        tuples = [(tuples[0], tuples[1], tuples[2])]
+    for edge_tuple in tuples:
+        logging.debug(edge_tuple)
+        fxn = {'fxn': 'addEdge',
+               'fromVertex': edge_tuple[0],
+               'label': edge_tuple[1],
+               'toVertex': edge_tuple[2] }
+        statement['fxns'].append(fxn)
     output_data['statements'].append(statement)
     return output_data
 
 #Add a property of the specified key and value to the Vertex with the
-# "name" provided.  If the Vertex with "name" does not exist, it will
-# be created.
+# "name" provided.  If the property already exists, its value will be
+# overridden.  If the Vertex with "name" does not exist, it will be
+# created.
 def add_vertex_property_statement(name, prop_name, prop_value):
     output_data = {'statements': []}
     statement = {'fxns': [], 'api': 'neuron'}
