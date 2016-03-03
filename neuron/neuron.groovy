@@ -63,7 +63,7 @@ public class Neuron {
                 retVals.push(neuronGetVertexProperty(it['name'],it['property']));
                 break;
             case "addEdge":
-                retVals.push(neuronEdgeVertex(it['fromVertex'],it['toVertex'],it['label']));
+                retVals.push(neuronAddEdge(it['fromVertex'],it['toVertex'],it['label']));
                 break;
             }
         }
@@ -96,11 +96,11 @@ public class Neuron {
         }
     }
 
-    public neuronEdgeVertex(fromName, toName, label) {
+    public neuronAddEdge(fromName, toName, label) {
     //Adding an Edge will add the Vertices as well
         def fromVertex = neuronAddVertex(fromName);
         def toVertex = neuronAddVertex(toName);
-        def edge_iter = g.V(fromVertex).out("knows").has("name", toName);
+        def edge_iter = g.V(fromVertex).out(label).has("name", toName);
         if (edge_iter) {
             return edge_iter.next();
         } else {
