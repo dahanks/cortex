@@ -49,25 +49,28 @@ public class Neuron {
     }
 
     public executeNeuronStatement(statement) {
+    /*This will return the result of whatever the LAST function is, and nothing
+      in between.  And that's normally what we want; otherwise, you should
+      divide the functions into different statements. */
         def fxns = statement['fxns'];
-        def retVals = [];
+        def retVal = "";
         fxns.each {
             switch (it['fxn']) {
             case "addVertex":
-                retVals.push(neuronAddVertex(it['name']));
+                retVal = neuronAddVertex(it['name']);
                 break;
             case "addVertexProperty":
-                retVals.push(neuronAddVertexProperty(it['name'],it['property'],it['value']));
+                retVal = neuronAddVertexProperty(it['name'],it['property'],it['value']);
                 break;
             case "getVertexProperty":
-                retVals.push(neuronGetVertexProperty(it['name'],it['property']));
+                retVal = neuronGetVertexProperty(it['name'],it['property']);
                 break;
             case "addEdge":
-                retVals.push(neuronAddEdge(it['fromVertex'],it['toVertex'],it['label']));
+                retVal = neuronAddEdge(it['fromVertex'],it['toVertex'],it['label']);
                 break;
             }
         }
-        return retVals;
+        return retVal;
     }
 
     public neuronAddVertex(name) {
@@ -163,21 +166,14 @@ public class Neuron {
             connection.ack(frame);
             def parser = new JsonSlurper();
             def message = parser.parseText(frame.getBody());
+            //return the result of each Statement (but not of each function)
             def reply = ["responses": []];
             for (statement in message['statements']) {
                 println statement;
                 def result;
                 try {
                     result = executeStatement(statement);
-                    if (statement["api"] == "blueprints" ||
-                        statement["api"] == "neuron") {
-                        if (result) {
-                            //TODO: figure out how to return results better
-                            //result = "OK";
-                        } else {
-                            result = "";
-                        }
-                    } else if (statement["api"] == "gremlin"){
+                    if (statement["api"] == "gremlin"){
                         result = result.next();
                     }
                 } catch (Exception e) {
