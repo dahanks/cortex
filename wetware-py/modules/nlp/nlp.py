@@ -21,10 +21,7 @@ class WetwareWorker(Worker):
             message = json.loads(frame.body)
             ############## End header ##############
 
-            #TODO throw out replies in the super class
-            if frame.headers['destination'] == self.args['neuron_topic']:
-                self.process_neuron_operation(message)
-            elif frame.headers['destination'] == self.args['nlp_topic']:
+            if frame.headers['destination'] == self.args['input_topic']:
                 self.process_nlp_statement(message)
         except:
             self.reply({'responses': "I'm terribly sorry.  I'm feeling faint.  Perhaps I should see a doctor..."})
@@ -92,7 +89,6 @@ class WetwareWorker(Worker):
             self.reply({'responses': "I'm terribly sorry, but I don't understand the question."})
             logging.exception("Caught Exception:")
 
-    #TODO: this is broken
     def parse_question_where(self, words):
         try:
             #0,1 Where is
@@ -137,16 +133,6 @@ class WetwareWorker(Worker):
             reply['responses'] = "Hmm, apologies...I've...lost my train of thought..."
             logging.exception("Caught Exception:")
         self.reply(reply)
-
-    def process_neuron_operation(self, input_message):
-        output_data = { 'statements': []}
-        for raw_statement in input_message['statements']:
-            if "addVertex" in raw_statement or 'addEdge' in raw_statement:
-                output_data = Neuron.compose_blueprints_statement(raw_statement)
-            else:
-                output_data = Neuron.compose_gremlin_statement(raw_statement)
-        logging.debug(output_data)
-        self.publish(output_data, expect_reply=True)
 
     def interpret_audrey_is(self, frame):
         reply = {}
