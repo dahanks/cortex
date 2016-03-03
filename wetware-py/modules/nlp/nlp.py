@@ -7,6 +7,7 @@ import sys
 from wetware.worker import Worker
 from wetware.worker import WetwareException
 from wetware.worker import FrameException
+import wetware.neuron as Neuron
 
 class WetwareWorker(Worker):
 
@@ -56,9 +57,9 @@ class WetwareWorker(Worker):
             pred = words[2].strip() + 's' #add back indicative verb conj 's'
             obj = words[3].strip()[:-1] #take off the question mark
             output_data = {'statements': []}
-            output_data['statements'].append(self.compose_gremlin_statement('g.V().has("name","' + subj + '").both("' + pred + '").has("name","' + obj + '")'))
-            output_data['statements'].append(self.compose_gremlin_statement('g.V().has("name","' + subj + '").both("' + pred + '").both("' + pred + '").simplePath().has("name","' + obj + '")'))
-            output_data['statements'].append(self.compose_gremlin_statement('g.V().has("name","' + subj + '").both("' + pred + '").both("' + pred + '").both("' + pred + '").simplePath().has("name","' + obj + '")'))
+            output_data['statements'].append(Neuron.compose_gremlin_statement('g.V().has("name","' + subj + '").both("' + pred + '").has("name","' + obj + '")'))
+            output_data['statements'].append(Neuron.compose_gremlin_statement('g.V().has("name","' + subj + '").both("' + pred + '").both("' + pred + '").simplePath().has("name","' + obj + '")'))
+            output_data['statements'].append(Neuron.compose_gremlin_statement('g.V().has("name","' + subj + '").both("' + pred + '").both("' + pred + '").both("' + pred + '").simplePath().has("name","' + obj + '")'))
             self.publish(output_data, expect_reply=True, callback=self.interpret_does_response)
         except:
             self.reply({'responses': "I'm terribly sorry, but I don't understand the question."})
@@ -70,7 +71,7 @@ class WetwareWorker(Worker):
             subj = words[1].strip()
             key = words[2].strip()[:-1]
             output_data = {'statements': []}
-            output_data['statements'].append(self.compose_gremlin_statement(
+            output_data['statements'].append(Neuron.compose_gremlin_statement(
                 'g.V().has("name","' + subj + '").values("' + key + '")'))
             self.publish(output_data, expect_reply=True, callback=self.interpret_audrey_is)
         except:
@@ -85,7 +86,7 @@ class WetwareWorker(Worker):
             #4 of
             obj = words[5].strip()[:-1]
             output_data = {'statements': []}
-            output_data['statements'].append(self.get_vertex_property_statement(obj, key))
+            output_data['statements'].append(Neuron.get_vertex_property_statement(obj, key))
             self.publish(output_data, expect_reply=True, callback=self.interpret_audrey_what_is_the)
         except:
             self.reply({'responses': "I'm terribly sorry, but I don't understand the question."})
@@ -97,7 +98,7 @@ class WetwareWorker(Worker):
             #0,1 Where is
             subj = words[2].strip()[:-1]
             output_data = {'statements': []}
-            output_data['statements'].append(self.get_vertex_property_statement(subj, "location"))
+            output_data['statements'].append(Neuron.get_vertex_property_statement(subj, "location"))
             self.publish(output_data, expect_reply=True, callback=self.interpret_audrey_where)
         except:
             self.reply({'responses': "I'm terribly sorry, but I don't understand the question."})
@@ -115,47 +116,14 @@ class WetwareWorker(Worker):
                 obj = obj[:-1]
             if pred == "is":
                 #"is" will become a boolean property on node
-                output_data['statements'].append(self.add_vertex_property_statement(subj, obj, True))
+                output_data['statements'].append(Neuron.add_vertex_property_statement(subj, obj, True))
             else:
                 #otherwise, add nodes and edge (add_edge adds nodes and edge)
-                output_data['statements'].append(self.add_edge_statement(subj, obj, pred))
+                output_data['statements'].append(Neuron.add_edge_statement(subj, obj, pred))
             self.publish(output_data, expect_reply=True, callback=self.acknowledge_response)
         except:
             self.reply({'responses': "I'm having trouble understanding what it is you want to say..."})
             logging.exception("Caught Exception:")
-
-    def add_vertex_statement(self, *names):
-        statement = {'fxns': [], 'api': 'neuron'}
-        for name in names:
-            fxn = {'fxn': 'addVertex', 'name': name}
-            statement['fxns'].append(fxn)
-        return statement
-
-    def add_edge_statement(self, from_vertex, to_vertex, label):
-        statement = {'fxns': [], 'api': 'neuron'}
-        fxn = {'fxn': 'addEdge',
-               'fromVertex': from_vertex,
-               'toVertex': to_vertex,
-               'label': label }
-        statement['fxns'].append(fxn)
-        return statement
-
-    def add_vertex_property_statement(self, name, prop_name, prop_value):
-        statement = {'fxns': [], 'api': 'neuron'}
-        fxn = {'fxn': 'addVertexProperty',
-               'name': name,
-               'property': prop_name,
-               'value': prop_value }
-        statement['fxns'].append(fxn)
-        return statement
-
-    def get_vertex_property_statement(self, name, prop_name):
-        statement = {'fxns': [], 'api': 'neuron'}
-        fxn = {'fxn': 'getVertexProperty',
-               'name': name,
-               'property': prop_name }
-        statement['fxns'].append(fxn)
-        return statement
 
     def acknowledge_response(self, frame):
         #TODO: clean this up
@@ -171,85 +139,15 @@ class WetwareWorker(Worker):
             logging.exception("Caught Exception:")
         self.reply(reply)
 
-    def compose_raw_statement(self, statement):
-        output_statement = {'fxns': []}
-        for input_function in statement.split('.'):
-            #these are the Tinker/TitanGraphs or traversal()
-            # their usage is hardcoded at neuron
-            if input_function == 'graph' or input_function == 'g':
-                continue
-            else:
-                function_name = input_function.split('(')[0]
-                arguments = []
-                for argument in input_function.split('(')[1].split(')')[0].split(','):
-                    #don't put in empty strings
-                    if argument:
-                        #strip whitespace, and strip quotes (on each side)
-                        # there would be a problem here is quotes weren't there
-                        arguments.append(argument.strip()[1:-1])
-                output_function = {
-                    'fxn': function_name,
-                    'args': arguments
-                }
-                output_statement['fxns'].append(output_function)
-        return output_statement
-
     def process_neuron_operation(self, input_message):
         output_data = { 'statements': []}
         for raw_statement in input_message['statements']:
             if "addVertex" in raw_statement or 'addEdge' in raw_statement:
-                output_data['statements'].append(self.compose_blueprints_statement(raw_statement))
+                output_data['statements'].append(Neuron.compose_blueprints_statement(raw_statement))
             else:
-                output_data['statements'].append(self.compose_gremlin_statement(raw_statement))
+                output_data['statements'].append(Neuron.compose_gremlin_statement(raw_statement))
         logging.debug(output_data)
         self.publish(output_data, expect_reply=True)
-
-    def compose_addedge_statement(self, raw_statement):
-        #when neuron sees it's blueprints, it will check if fxn is addEdge
-        # and handle this different api accordingly
-        output_statement = {'fxns': []}
-        addedge_statement = {}
-        #format: Vertex.addEdge(label, Vertex, key, value, ... )
-        # so, everything before .addEdge is the fromVertex Gremlin
-        fromGremlin = raw_statement.split('.addEdge(')[0]
-        # the label is the first comma-separated argument inside .addEdge()
-        label = raw_statement.split('.addEdge(')[1].split(',')[0].strip()[1:-1]
-        # properties are all strings from the end of the function ')'
-        #  to the end of the toGremlin function, which also ends in ')'
-        properties = []
-        for prop in raw_statement.split(')')[-2].split(','):
-            if prop:
-                properties.append(prop.strip()[1:-1])
-        # grab everything after 'label'
-        #  start at g.V
-        #  end at second instance (in reverse) of ')'
-        toGremlinMess = raw_statement.split(label)[1]
-        beginToGremlin = toGremlinMess.find('g.V')
-        endToGremlin = toGremlinMess.rfind(')', 0, len(toGremlinMess) - 1) + 1
-        toGremlin = toGremlinMess[beginToGremlin:endToGremlin]
-        # wrap them with a bow
-        addedge_statement['fxn'] = 'addEdge'
-        addedge_statement['fromVertex'] = self.compose_raw_statement(fromGremlin)
-        addedge_statement['toVertex'] = self.compose_raw_statement(toGremlin)
-        addedge_statement['label'] = label
-        addedge_statement['properties'] = properties
-        output_statement['fxns'].append(addedge_statement)
-        return output_statement
-
-    def compose_blueprints_statement(self, raw_statement):
-        #addEdge is a special case, addVertex is not (and don't expect others to be)
-        if 'addEdge' in raw_statement:
-            statement = self.compose_addedge_statement(raw_statement)
-        else:
-            statement = self.compose_raw_statement(raw_statement)
-        statement['api'] = 'blueprints'
-        return statement
-
-    def compose_gremlin_statement(self, raw_statement):
-        #no special cases for Gremlin
-        statement = self.compose_raw_statement(raw_statement)
-        statement['api'] = 'gremlin'
-        return statement
 
     def interpret_audrey_is(self, frame):
         reply = {}
