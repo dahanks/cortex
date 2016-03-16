@@ -30,8 +30,7 @@ class WetwareWorker(Worker):
                 #time.sleep(1)
                 #self.reply({'seconds': 'that was JUST one second'})
                 # TEST ASYNCRONOUS
-                self.test = 1
-                self.publish(message, callback=self.test, transaction=transaction)
+                self.publish(message, callback=self.after_one, transaction=transaction)
             elif float(message['secs']) == 5:
                 # TEST SYNCRONOUS
                 #time.sleep(5)
