@@ -25,9 +25,10 @@ class Worker(object):
     def __init__(self, subclass_section=None):
         self.args = self.__parse_all_params(subclass_section)
         self.apollo_conn = None
-        self.reply_topics = []
-        self.reply_subs = []
-        self.reply_callbacks = []
+        self.reply_map = {}
+        # self.reply_topics = []
+        # self.reply_subs = []
+        # self.reply_callbacks = []
 
     def __parse_all_params(self, subclass_section=None):
         """Parse all command line and config args of base and optional subclass
@@ -222,7 +223,10 @@ class Worker(object):
         #  Since this is a list (queue), if you reply(), you might
         #  be replying to somebody else's request
         if 'reply-to' in frame.headers:
-            self.reply_topics.append(frame.headers['reply-to'])
+            # self.reply_topics.append(frame.headers['reply-to'])
+            transaction_uuid = str(UUID())
+            frame['transaction'] = transaction_uuid
+            self.reply_map[transaction_uuid] = {'reply-to': frame.headers['reply-to']}
 
         # Raise FrameException if frame is bad
         try:
@@ -316,7 +320,7 @@ class Worker(object):
 
     Returns False if you never specified an OUTPUT_TOPIC.
     """
-    def publish(self, message, topic=None, expect_reply=False, callback=None):
+    def publish(self, message, topic=None, expect_reply=False, callback=None, transaction=None):
         # If you pass a dict, we'll convert it to JSON for you
         if isinstance(message, dict):
             message_str = json.dumps(message)
@@ -339,15 +343,27 @@ class Worker(object):
             # is totally redundant, but feels safer.
             if topic:
                 if expect_reply:
-                    temp_uuid = str(UUID())
-                    self.reply_subs.append(
-                        self.apollo_conn.subscribe('/temp-queue/' + temp_uuid,
-                                                   {StompSpec.ACK_HEADER:
-                                                    StompSpec.ACK_CLIENT_INDIVIDUAL}))
-                    if callback:
-                        self.reply_callbacks.append(callback)
+                    #use UUID from prior transaction, or make one here
+                    if transaction:
+                        temp_uuid = transaction
                     else:
-                        self.reply_callbacks.append(None)
+                        temp_uuid = str(UUID())
+                        #this will already exist if we started a transaction
+                        if temp_uuid not in self.reply_map:
+                            self.reply_map[temp_uuid] = {}
+                    # self.reply_subs.append(
+                    #     self.apollo_conn.subscribe('/temp-queue/' + temp_uuid,
+                    #                                {StompSpec.ACK_HEADER:
+                    #                                 StompSpec.ACK_CLIENT_INDIVIDUAL}))
+                    # if callback:
+                    #     self.reply_callbacks.append(callback)
+                    # else:
+                    #     self.reply_callbacks.append(None)
+                    temp_sub = self.apollo_conn.subscribe('/temp-queue/' + temp_uuid,
+                                                          {StompSpec.ACK_HEADER:
+                                                           StompSpec.ACK_CLIENT_INDIVIDUAL})
+                    self.reply_map[temp_uuid]['callback'] = callback
+                    self.reply_map[temp_uuid]['temp_sub'] = temp_sub
                     self.apollo_conn.send(topic, message_str,
                                           headers={'reply-to': '/temp-queue/' + temp_uuid})
                 else:
@@ -356,7 +372,7 @@ class Worker(object):
             logging.warning("Tried to publish a message but there is no Apollo"
                             " connection! (Did you call run() on your Worker?)")
 
-    def reply(self, message):
+    def reply(self, message, destination):
         """Send a reply to the last person who was expecting it.
 
         Call this after you've received a message expecting a reply and you've
@@ -365,7 +381,10 @@ class Worker(object):
         in order!
         """
         try:
-            self.publish(message, self.reply_topics.pop(0))
+            self.publish(message, destination)
+            #remove the transaction from our map
+            if destination in self.reply_map:
+                del self.reply_map[destination]
         except IndexError:
             logging.warning("Tried to reply when no one was expecting a reply!"
                             " Be careful: whatever you're doing may cause you"
