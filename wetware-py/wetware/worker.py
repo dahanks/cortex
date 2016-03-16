@@ -255,29 +255,28 @@ class Worker(object):
         # returning transaction ID for handling in your reply
         return transaction_uuid
 
-    def handle_reply(self, frame, transaction):
+    def handle_reply(self, frame, transaction=None):
         """Handles a reply over a temp queue to a request you already submitted
 
-        All replies will look for a callback (regardless of whether or not you
-        passed one in your publish() call.  The callback will be None if you
-        did not pass one.  If the callback is valid, we'll try to call the
-        function, but we do not guarantee that it exists.
+        If a transaction is provided with a valid callback function, we'll
+        try to call the function, but we do not guarantee that it exists.
         """
-        #callback = self.reply_callbacks.pop()
-        callback = self.transactions[transaction]['callback']
-        destination = self.transactions[transaction]['reply-to']
-        logging.debug("SEND BACK TO {}".format(destination))
-        if (callback
-            and hasattr(callback, '__name__')
-            and hasattr(callback, '__call__')
-            and callback.__name__ in dir(self)):
-            logging.debug("RUNNING CALLBACK WITH {}".format(destination))
-            callback(frame, destination)
-        elif not callback:
-            #No callback is fine, we just won't do anything
-            pass
-        else:
-            raise WetwareException("Invalid callback provided: {0}".format(callback))
+        #TODO: test the error cases here
+        if transaction:
+            callback = self.transactions[transaction]['callback']
+            destination = self.transactions[transaction]['reply-to']
+            logging.debug("SEND BACK TO {}".format(destination))
+            if (callback
+                and hasattr(callback, '__name__')
+                and hasattr(callback, '__call__')
+                and callback.__name__ in dir(self)):
+                logging.debug("RUNNING CALLBACK WITH {}".format(destination))
+                callback(frame, destination)
+            elif not callback:
+                #No callback is fine, we just won't do anything
+                pass
+            else:
+                raise WetwareException("Invalid callback provided: {0}".format(callback))
 
     def verify_frame(self, frame):
         """Verify a frame (OVERRIDE and SUPER)
