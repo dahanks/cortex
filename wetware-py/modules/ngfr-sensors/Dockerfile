@@ -1,4 +1,4 @@
-FROM wetware-py:latest
+FROM wetware-py:1.0.15
 
 RUN pip install paho-mqtt
 
