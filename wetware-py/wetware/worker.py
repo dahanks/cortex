@@ -222,11 +222,17 @@ class Worker(object):
         # NOTE: YOU MUST NOT REPLY if you're not expected to!
         #  Since this is a list (queue), if you reply(), you might
         #  be replying to somebody else's request
+
+        #None if we don't need to reply
+        transaction_uuid = None
+
         if 'reply-to' in frame.headers:
             # self.reply_topics.append(frame.headers['reply-to'])
             transaction_uuid = str(UUID())
-            frame['transaction'] = transaction_uuid
             self.reply_map[transaction_uuid] = {'reply-to': frame.headers['reply-to']}
+            logging.debug("GOT A TRANSACTION")
+            logging.debug(transaction_uuid)
+            logging.debug(self.reply_map[transaction_uuid])
 
         # Raise FrameException if frame is bad
         try:
@@ -236,17 +242,23 @@ class Worker(object):
                 # the destination we used to subscribe looks a little different
                 #  than the destination coming in this time; hence, the weird
                 #  tuple check with string concatentation below.
-                temp_sub = str(frame.headers['destination'].split('.')[-1])
+                transaction = str(frame.headers['destination'].split('.')[-1])
+                logging.debug("GOT OUR SECONDARY RESPONSE")
+                logging.debug(transaction)
                 try:
-                    sub_index = self.reply_subs.index(('destination',
-                                                       '/temp-queue/' + temp_sub))
+                    pass
+                    #sub_index = self.reply_subs.index(('destination',
+                    #                                   '/temp-queue/' + temp_sub))
                 except ValueError:
                     logging.error("Somehow you got a message on a temp queue"
                                   " that you lost track of.  That is very weird"
                                   " so let's cut our losses.")
                     raise
-                self.apollo_conn.unsubscribe(self.reply_subs.pop(sub_index))
-                self.handle_reply(frame)
+                logging.debug("UNSUBSCRIBING FROM SECONDARY SUB")
+                logging.debug(self.reply_map[transaction]['temp_sub'])
+                self.apollo_conn.unsubscribe(self.reply_map[transaction]['temp_sub'])
+                #self.apollo_conn.unsubscribe(self.reply_subs.pop(sub_index))
+                self.handle_reply(frame, transaction)
         except FrameException, e:
             # Frame not verified; send an error in reply (if expected)
             #  otherwise, just skip it and continue outside loop...
@@ -255,9 +267,10 @@ class Worker(object):
             raise
 
         # returning frame so subclass can have it when overriding this function
-        return frame
+        #  also returning transaction ID for handling in your reply
+        return transaction_uuid
 
-    def handle_reply(self, frame):
+    def handle_reply(self, frame, transaction):
         """Handles a reply over a temp queue to a request you already submitted
 
         All replies will look for a callback (regardless of whether or not you
@@ -265,12 +278,16 @@ class Worker(object):
         did not pass one.  If the callback is valid, we'll try to call the
         function, but we do not guarantee that it exists.
         """
-        callback = self.reply_callbacks.pop()
+        #callback = self.reply_callbacks.pop()
+        callback = self.reply_map[transaction]['callback']
+        destination = self.reply_map[transaction]['reply-to']
+        logging.debug("SEND BACK TO {}".format(destination))
         if (callback
             and hasattr(callback, '__name__')
             and hasattr(callback, '__call__')
             and callback.__name__ in dir(self)):
-            callback(frame)
+            logging.debug("RUNNING CALLBACK WITH {}".format(destination))
+            callback(frame, destination)
         elif not callback:
             #No callback is fine, we just won't do anything
             pass
@@ -345,8 +362,10 @@ class Worker(object):
                 if expect_reply:
                     #use UUID from prior transaction, or make one here
                     if transaction:
+                        logging.debug("PUBLISHING BASED ON TRANSACTION {}".format(transaction))
                         temp_uuid = transaction
                     else:
+                        logging.debug("PUBLISHING WITH BRAND NEW TRANSACTION!")
                         temp_uuid = str(UUID())
                         #this will already exist if we started a transaction
                         if temp_uuid not in self.reply_map:
@@ -364,6 +383,8 @@ class Worker(object):
                                                            StompSpec.ACK_CLIENT_INDIVIDUAL})
                     self.reply_map[temp_uuid]['callback'] = callback
                     self.reply_map[temp_uuid]['temp_sub'] = temp_sub
+                    logging.debug("HERES OUR MAP")
+                    logging.debug(self.reply_map[temp_uuid])
                     self.apollo_conn.send(topic, message_str,
                                           headers={'reply-to': '/temp-queue/' + temp_uuid})
                 else:
