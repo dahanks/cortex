@@ -249,7 +249,7 @@ class Worker(object):
             #  otherwise, just skip it and continue outside loop...
             #TODO: test this
             if 'reply-to' in frame.headers:
-                self.reply({ 'Error': 'Frame failed verification' }, frame.headers['reply-to'])
+                self.publish({ 'Error': 'Frame failed verification' }, frame.headers['reply-to'])
             raise
 
         # returning transaction ID for handling in your reply
@@ -270,13 +270,17 @@ class Worker(object):
                 and hasattr(callback, '__name__')
                 and hasattr(callback, '__call__')
                 and callback.__name__ in dir(self)):
-                logging.debug("RUNNING CALLBACK WITH {}".format(destination))
                 callback(frame, destination)
             elif not callback:
                 #No callback is fine, we just won't do anything
                 pass
             else:
                 raise WetwareException("Invalid callback provided: {0}".format(callback))
+            #remove the transaction from our map
+            if transaction in self.transactions:
+                del self.transactions[transaction]
+                logging.debug("THIS SHOULD BE EMPTY")
+                logging.debug(self.transactions)
 
     def verify_frame(self, frame):
         """Verify a frame (OVERRIDE and SUPER)
@@ -308,20 +312,22 @@ class Worker(object):
                                    'info': frame.info(),
                                    'body': frame.body})
 
-    """Publish a message to a topic using your Apollo Connection
+    def publish(self, message, topic=None, callback=None, transaction=None):
+        """Publish a message to a topic using your Apollo Connection
 
-    If no topic is supplied, we assume you want to publish output to the
-    topic you configured with your OUTPUT_TOPIC parameter in your config
-    file. You know, cause we're nice.
+        If no topic is supplied, we assume you want to publish output to the
+        topic you configured with your OUTPUT_TOPIC parameter in your config
+        file. You know, cause we're nice.
 
-    Setting expect_reply to True establishes a subscription to a temp-queue
-    for your response.  When you get the response, this worker will call
-    self.handle_reply() to handle it, and the worker will unsubscribe from
-    the temp queue.
+        #TODO update doc based on transactions
+        Setting expect_reply to True establishes a subscription to a temp-queue
+        for your response.  When you get the response, this worker will call
+        self.handle_reply() to handle it, and the worker will unsubscribe from
+        the temp queue.
 
-    Returns False if you never specified an OUTPUT_TOPIC.
-    """
-    def publish(self, message, topic=None, expect_reply=False, callback=None, transaction=None):
+        Returns False if you never specified an OUTPUT_TOPIC.
+        """
+
         # If you pass a dict, we'll convert it to JSON for you
         if isinstance(message, dict):
             message_str = json.dumps(message)
@@ -343,57 +349,55 @@ class Worker(object):
             # Just check to see if we've specified a topic at this point.  This
             # is totally redundant, but feels safer.
             if topic:
-                if expect_reply:
+                # Specifying a callback implies you are expecting a reply;
+                #  otherwise, we send and forget
+                if callback:
+                    #TODO: when would you want to make your own transaction?
                     #use UUID from prior transaction, or make one here
                     if transaction:
                         logging.debug("PUBLISHING BASED ON TRANSACTION {}".format(transaction))
-                        temp_uuid = transaction
+                        transaction_uuid = transaction
                     else:
                         logging.debug("PUBLISHING WITH BRAND NEW TRANSACTION!")
-                        temp_uuid = str(UUID())
+                        transaction_uuid = str(UUID())
                         #this will already exist if we started a transaction
-                        if temp_uuid not in self.transactions:
-                            self.transactions[temp_uuid] = {}
-                    # self.reply_subs.append(
-                    #     self.apollo_conn.subscribe('/temp-queue/' + temp_uuid,
-                    #                                {StompSpec.ACK_HEADER:
-                    #                                 StompSpec.ACK_CLIENT_INDIVIDUAL}))
-                    # if callback:
-                    #     self.reply_callbacks.append(callback)
-                    # else:
-                    #     self.reply_callbacks.append(None)
-                    temp_sub = self.apollo_conn.subscribe('/temp-queue/' + temp_uuid,
+                        if transaction_uuid not in self.transactions:
+                            self.transactions[transaction_uuid] = {}
+                    temp_sub = self.apollo_conn.subscribe('/temp-queue/' + transaction_uuid,
                                                           {StompSpec.ACK_HEADER:
                                                            StompSpec.ACK_CLIENT_INDIVIDUAL})
-                    self.transactions[temp_uuid]['callback'] = callback
-                    self.transactions[temp_uuid]['temp_sub'] = temp_sub
+                    self.transactions[transaction_uuid]['callback'] = callback
+                    self.transactions[transaction_uuid]['temp_sub'] = temp_sub
                     logging.debug("HERES OUR MAP")
-                    logging.debug(self.transactions[temp_uuid])
+                    logging.debug(self.transactions[transaction_uuid])
                     self.apollo_conn.send(topic, message_str,
-                                          headers={'reply-to': '/temp-queue/' + temp_uuid})
+                                          headers={'reply-to': '/temp-queue/' + transaction_uuid})
                 else:
                     self.apollo_conn.send(topic, message_str)
         else:
             logging.warning("Tried to publish a message but there is no Apollo"
                             " connection! (Did you call run() on your Worker?)")
 
-    def reply(self, message, destination):
-        """Send a reply to the last person who was expecting it.
+    def reply(self, message):
+        """Send a reply to whomever sent you a message with a reply-to.
 
-        Call this after you've received a message expecting a reply and you've
-        done the work to send in the reply.  This takes the longest-waiting
-        reply topic out of the queue, so make sure you're replying to things
-        in order!
+        This function should only ever be used in a completely synchronous, in
+        which case you'll only ever have a single transaction.  This function
+        is just a convenient way for you to publish without having to specify
+        the destination.
+
+        If you are writing an asynchronous worker, you should have specified
+        a callback function.  In that function you should use publish().
         """
-        try:
-            self.publish(message, destination)
-            #remove the transaction from our map
-            if destination in self.transactions:
-                del self.transactions[destination]
-        except IndexError:
-            logging.warning("Tried to reply when no one was expecting a reply!"
-                            " Be careful: whatever you're doing may cause you"
-                            " to reply to the wrong thing in the future!")
+        if len(self.transactions) == 1:
+            # grab the only transaction, publish to it, and delete it
+            trans_id, transaction = self.transactions.items()[0]
+            self.publish(message, transaction['reply-to'])
+            del self.transactions[trans_id]
+        elif len(self.transactions) == 0:
+            raise WetwareException("Tried to use reply() when no one was expecting it!")
+        else:
+            raise WetwareException("Tried to use reply() when there are multiple, asynchronous transactions!")
 
 def check_for_bool(value):
     if value.lower() == 'true':

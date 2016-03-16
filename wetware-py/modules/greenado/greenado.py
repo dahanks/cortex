@@ -4,6 +4,8 @@ import logging
 import json
 import sys
 
+import time
+
 from wetware.worker import Worker
 from wetware.worker import WetwareException
 from wetware.worker import FrameException
@@ -27,24 +29,30 @@ class WetwareWorker(Worker):
             # self.after_secs(secs)
 
             if float(message['secs']) == 1:
-                self.publish(message, expect_reply=True, callback=self.after_one, transaction=transaction)
+                #time.sleep(1)
+                #self.reply({'seconds': 'that was JUST one second'})
+                self.publish(message, callback=self.after_one, transaction=transaction)
             elif float(message['secs']) == 5:
-                self.publish(message, expect_reply=True, callback=self.after_five, transaction=transaction)
+                #time.sleep(5)
+                #self.reply({'seconds': 'that was TOTALLY five seconds'})
+                self.publish(message, callback=self.after_five, transaction=transaction)
 
-    def handle_reply(self, frame, transaction):
-        super(WetwareWorker, self).handle_reply(frame, transaction)
-        message = json.loads(frame.body)
-        print frame.headers['destination']
-        print message
+    # def handle_reply(self, frame, transaction):
+    #     super(WetwareWorker, self).handle_reply(frame, transaction)
+    #     message = json.loads(frame.body)
+    #     print frame.headers['destination']
+    #     print message
 
     def after_secs(self, secs):
-        self.reply({'seconds':'that was {0} seconds'.format(secs)})
+        self.publish({'seconds':'that was {0} seconds'.format(secs)})
 
     def after_one(self, frame, destination):
-        self.reply({'seconds':'that was one second'}, destination)
+        #self.reply({'seconds':'that was one second'})
+        self.publish({'seconds':'that was one second'}, destination)
 
     def after_five(self, frame, destination):
-        self.reply({'seconds':'that was five seconds'}, destination)
+        #self.reply({'seconds':'that was five second'})
+        self.publish({'seconds':'that was five seconds'}, destination)
 
 def main():
     logging.basicConfig(level=logging.DEBUG)
