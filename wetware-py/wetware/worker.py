@@ -169,10 +169,14 @@ class Worker(object):
                 logging.exception("Your config does not have a '{0}' section"
                                   " for your Worker subclass!".format(subclass_section))
                 raise
-
         return config_dict
 
     def run(self):
+        """Initialize Worker and loop while waiting for input.
+
+        If you want to use the Worker base class without running a service,
+        you'll need to override this function, but keep the first 'with' line.
+        """
         with ApolloConnection(self.args) as self.apollo_conn:
             # subscribe to topic and handle messages;
             #  otherwise, just end and let something override run()
@@ -190,19 +194,21 @@ class Worker(object):
                                 " function is overridden, nothing will happen")
 
     def on_message(self, frame):
-        """Handles incoming messages and runs operations (OVERRIDE and SUPER)
+        """Handles overhead of incoming messages, then let's subclass handle the
+        work.
 
-        This method is designed to be overridden (call super first!) with
-        additional operations to handle messages.
+        This method is designed to be overridden (call super first!). Perform
+        work based on the queue/topic on which your Worker got the message.
 
         If the message received expects a reply, a transaction will be recorded,
         with the reply-to destination tracked.  If, before replying, this worker
         needs to publish and receive a response, those elements will be recorded
-        linked to this transaction.
+        and linked to this transaction.
 
-        When you override this method (which is essentially a requirements), you
-        should check that your frame header destination is what you expect so
-        that you can filter out replies on temp-queues.  Otherwise, you'll
+        When you override this method (which is effectively a requirement), you
+        should perform work based on the queue/topic on which this message was
+        received.  As a desired side-effect, this will ensure that you filter
+        out messages that came in as replies on temp-queues.  Otherwise, you'll
         accidentally call self.on_message() for replies the same you would for
         original messages.
 
@@ -218,11 +224,7 @@ class Worker(object):
         if 'reply-to' in frame.headers:
             transaction_uuid = str(UUID())
             self.transactions[transaction_uuid] = {'reply-to': frame.headers['reply-to']}
-            logging.debug("GOT A TRANSACTION")
-            logging.debug(transaction_uuid)
-            logging.debug(self.transactions[transaction_uuid])
 
-        # Raise FrameException if frame is bad
         try:
             self.verify_frame(frame)
             # check if this is a reply you're waiting for
@@ -235,12 +237,10 @@ class Worker(object):
         except FrameException, e:
             # Frame not verified; send an error in reply (if expected)
             #  otherwise, just skip it and continue outside loop...
-            #TODO: test this
             if 'reply-to' in frame.headers:
                 self.publish({ 'Error': 'Frame failed verification' }, frame.headers['reply-to'])
             raise
-
-        # returning transaction ID for handling in your reply
+        # returning transaction ID for sublass to pass into publish/callback
         return transaction_uuid
 
     def handle_reply(self, frame, transaction):
@@ -261,7 +261,7 @@ class Worker(object):
             self.apollo_conn.unsubscribe(temp_sub)
             logging.debug("UNSUBSCRIBING FROM SECONDARY SUB")
             logging.debug(temp_sub)
-        except KeyError, ValueError:
+        except (KeyError, ValueError):
             logging.exception("Somehow you got a message on a temp queue"
                               " that you weren't keeping track of."
                               " That is very weird so let's cut our losses.")
@@ -303,7 +303,8 @@ class Worker(object):
         """
         try:
             message = json.loads(frame.body)
-            #handle "operation" messages for sync and async commands
+            #DEPRECATED, but serves as a good example:
+            # handle "operation" messages for sync and async commands
             if ('operation' in message and
                 message['operation'].startswith('command')):
                 if 'command' not in message:
@@ -316,7 +317,7 @@ class Worker(object):
                     raise FrameException({'message': "Received an unknown 'command' operation",
                                            'info': frame.info(),
                                            'body': frame.body})
-        except ValueError:
+        except (TypeError, ValueError):
             # raising FrameException so we can skip it--this shouldn't be fatal
             raise FrameException({'message': "Received an invalid JSON object in message",
                                    'info': frame.info(),
