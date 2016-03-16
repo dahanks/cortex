@@ -166,8 +166,8 @@ class Worker(object):
                     value = check_for_bool(value)
                     config_dict[option] = value
             except ConfigParser.NoSectionError:
-                logging.error("Your config does not have a '{0}' section"
-                              " for your Worker subclass!".format(subclass_section))
+                logging.exception("Your config does not have a '{0}' section"
+                                  " for your Worker subclass!".format(subclass_section))
                 raise
 
         return config_dict
@@ -231,18 +231,6 @@ class Worker(object):
                 #  than the destination coming in this time; hence, the weird
                 #  tuple check with string concatentation below.
                 transaction = str(frame.headers['destination'].split('.')[-1])
-                logging.debug("GOT OUR SECONDARY RESPONSE")
-                logging.debug(transaction)
-                try:
-                    temp_sub = self.transactions[transaction]['temp_sub']
-                    self.apollo_conn.unsubscribe(temp_sub)
-                    logging.debug("UNSUBSCRIBING FROM SECONDARY SUB")
-                    logging.debug(temp_sub)
-                except KeyError, ValueError:
-                    logging.error("Somehow you got a message on a temp queue"
-                                  " that you weren't keeping track of."
-                                  " That is very weird so let's cut our losses.")
-                    raise
                 self.handle_reply(frame, transaction)
         except FrameException, e:
             # Frame not verified; send an error in reply (if expected)
@@ -255,32 +243,54 @@ class Worker(object):
         # returning transaction ID for handling in your reply
         return transaction_uuid
 
-    def handle_reply(self, frame, transaction=None):
+    def handle_reply(self, frame, transaction):
         """Handles a reply over a temp queue to a request you already submitted
 
-        If a transaction is provided with a valid callback function, we'll
-        try to call the function, but we do not guarantee that it exists.
+        If a transaction is provided with a callback function, we'll
+        try to call the function.  We do not guarantee much error/exception
+        handling here, but we will make sure what you passed is actually a function.
         """
-        #TODO: test the error cases here
-        if transaction:
+        logging.debug("GOT OUR SECONDARY RESPONSE")
+        logging.debug(transaction)
+        try:
+            # calling handle_reply implies there was a transaction
+            #  with a callback and a temp_sub, but not necessarily
+            #  a transaction/reply-to destination
             callback = self.transactions[transaction]['callback']
+            temp_sub = self.transactions[transaction]['temp_sub']
+            self.apollo_conn.unsubscribe(temp_sub)
+            logging.debug("UNSUBSCRIBING FROM SECONDARY SUB")
+            logging.debug(temp_sub)
+        except KeyError, ValueError:
+            logging.exception("Somehow you got a message on a temp queue"
+                              " that you weren't keeping track of."
+                              " That is very weird so let's cut our losses.")
+            raise
+
+        #TODO: test the error cases here
+        destination = None
+        if 'reply-to' in self.transactions[transaction]:
             destination = self.transactions[transaction]['reply-to']
-            logging.debug("SEND BACK TO {}".format(destination))
-            if (callback
-                and hasattr(callback, '__name__')
-                and hasattr(callback, '__call__')
-                and callback.__name__ in dir(self)):
+
+        #remove the transaction from our tracking
+        # (regardless of how callback goes below)
+        if transaction in self.transactions:
+            del self.transactions[transaction]
+            logging.debug("THIS SHOULD BE EMPTY")
+            logging.debug(self.transactions)
+
+        #make sure callback is a valid function
+        logging.debug("SEND BACK TO {}".format(destination))
+        if (callback
+            and hasattr(callback, '__name__')
+            and hasattr(callback, '__call__')
+            and callback.__name__ in dir(self)):
+            try:
                 callback(frame, destination)
-            elif not callback:
-                #No callback is fine, we just won't do anything
-                pass
-            else:
-                raise WetwareException("Invalid callback provided: {0}".format(callback))
-            #remove the transaction from our map
-            if transaction in self.transactions:
-                del self.transactions[transaction]
-                logging.debug("THIS SHOULD BE EMPTY")
-                logging.debug(self.transactions)
+            except TypeError:
+                logging.exception("You implemented a callback with an invalid definition")
+        else:
+            raise WetwareException("Invalid callback provided: {0}".format(callback))
 
     def verify_frame(self, frame):
         """Verify a frame (OVERRIDE and SUPER)
@@ -349,29 +359,29 @@ class Worker(object):
             # Just check to see if we've specified a topic at this point.  This
             # is totally redundant, but feels safer.
             if topic:
-                # Specifying a callback implies you are expecting a reply;
-                #  otherwise, we send and forget
+                #Suuuper esoteric corner-case where you set a callback that is
+                # not a function, but a variable set to 0 or False
+                if callback == 0 or callback == False:
+                    raise WetwareException("Provided a callback that wasn't a"
+                                           " function! Callback: {0}".format(callback))
+                # only callback specified, so create a new transaction
+                if callback and not transaction:
+                    logging.debug("PUBLISHING WITH BRAND NEW TRANSACTION!")
+                    transaction = str(UUID())
+                    self.transactions[transaction] = {}
+                # this happens whether or not the transaction was just
+                #  created in the above check
                 if callback:
-                    #TODO: when would you want to make your own transaction?
-                    #use UUID from prior transaction, or make one here
-                    if transaction:
-                        logging.debug("PUBLISHING BASED ON TRANSACTION {}".format(transaction))
-                        transaction_uuid = transaction
-                    else:
-                        logging.debug("PUBLISHING WITH BRAND NEW TRANSACTION!")
-                        transaction_uuid = str(UUID())
-                        #this will already exist if we started a transaction
-                        if transaction_uuid not in self.transactions:
-                            self.transactions[transaction_uuid] = {}
-                    temp_sub = self.apollo_conn.subscribe('/temp-queue/' + transaction_uuid,
+                    logging.debug("PUBLISHING BASED ON TRANSACTION {}".format(transaction))
+                    self.transactions[transaction]['callback'] = callback
+                    temp_sub = self.apollo_conn.subscribe('/temp-queue/' + transaction,
                                                           {StompSpec.ACK_HEADER:
                                                            StompSpec.ACK_CLIENT_INDIVIDUAL})
-                    self.transactions[transaction_uuid]['callback'] = callback
-                    self.transactions[transaction_uuid]['temp_sub'] = temp_sub
+                    self.transactions[transaction]['temp_sub'] = temp_sub
                     logging.debug("HERES OUR MAP")
-                    logging.debug(self.transactions[transaction_uuid])
+                    logging.debug(self.transactions[transaction])
                     self.apollo_conn.send(topic, message_str,
-                                          headers={'reply-to': '/temp-queue/' + transaction_uuid})
+                                          headers={'reply-to': '/temp-queue/' + transaction})
                 else:
                     self.apollo_conn.send(topic, message_str)
         else:

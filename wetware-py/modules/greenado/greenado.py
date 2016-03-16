@@ -9,6 +9,7 @@ import time
 from wetware.worker import Worker
 from wetware.worker import WetwareException
 from wetware.worker import FrameException
+from wetware.worker import ApolloConnection
 
 from wetware.neuron import Statements
 
@@ -36,12 +37,23 @@ class WetwareWorker(Worker):
                 #time.sleep(5)
                 #self.reply({'seconds': 'that was TOTALLY five seconds'})
                 self.publish(message, callback=self.after_five, transaction=transaction)
+            else:
+                logging.debug(message)
 
     # def handle_reply(self, frame, transaction):
     #     super(WetwareWorker, self).handle_reply(frame, transaction)
     #     message = json.loads(frame.body)
     #     print frame.headers['destination']
     #     print message
+
+    def run(self):
+        with ApolloConnection(self.args) as self.apollo_conn:
+            self.publish({'secs': '1'}, callback=self.after_one)
+            while True:
+                frame = self.apollo_conn.receiveFrame()
+                logging.info("Received message: {0}".format(frame.info()))
+                self.on_message(frame)
+                break;
 
     def after_secs(self, secs):
         self.publish({'seconds':'that was {0} seconds'.format(secs)})
