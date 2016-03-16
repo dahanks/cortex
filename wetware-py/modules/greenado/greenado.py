@@ -49,7 +49,7 @@ class WetwareWorker(Worker):
     #             frame = self.apollo_conn.receiveFrame()
     #             logging.info("Received message: {0}".format(frame.info()))
     #             self.on_message(frame)
-    #             break;
+    #             break
 
     def after_one(self, frame, destination):
         #self.reply({'seconds':'that was one second'})

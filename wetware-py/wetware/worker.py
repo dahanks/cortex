@@ -118,9 +118,9 @@ class Worker(object):
             temp_sub = self.transactions[transaction]['temp_sub']
             self.apollo_conn.unsubscribe(temp_sub)
         except (KeyError, ValueError):
-            logging.exception("Somehow you got a message on a temp queue"
-                              " that you weren't keeping track of."
-                              " That is very weird so let's cut our losses.")
+            logging.exception("Somehow you got a message on a temp queue that"
+                              " you weren't keeping track of. You may not have"
+                              " specified a callback in publish().")
             raise
 
         # a reply-to destination is not necessarily required
@@ -147,15 +147,21 @@ class Worker(object):
     def publish(self, message, topic=None, callback=None, transaction=None):
         """Publish a message to a topic using your Apollo Connection
 
-        If no topic is supplied, we assume you want to publish output to the
+        If no topic is supplied, we'll assume you want to publish output to the
         topic you configured with your OUTPUT_TOPIC parameter in your config
         file. You know, cause we're nice.
 
-        #TODO update doc based on transactions
-        Setting expect_reply to True establishes a subscription to a temp-queue
-        for your response.  When you get the response, this worker will call
-        self.handle_reply() to handle it, and the worker will unsubscribe from
-        the temp queue.
+        If you expect a reply, pass in a callback function to run when you get
+        the response.  If you don't specify this, handle_reply() will have to
+        handle all messages.
+
+        If you had previous received a message requiring a response, and you're
+        calling publish() as part of that work, specify the transaction related
+        to the original request.  This will be passed into the callback so you
+        can respond to the appropriate destination.
+
+        You can specify a callback without a transaction, but that means you
+        cannot be trying to respond to anyone else.
         """
 
         # If you pass a dict, we'll convert it to JSON for you
@@ -165,8 +171,8 @@ class Worker(object):
         else:
             message_str = str(message)
 
-        # Hopefully you've initialized your Apollo connection via run()
-        if self.apollo_conn:
+        # Catch exception when you use Apollo connection without calling run()
+        try:
             # If no topic is provided, use the output_topic from config file
             if not topic:
                 # But, of course, make sure there is one in the config
@@ -204,9 +210,11 @@ class Worker(object):
                                           headers={'reply-to': '/temp-queue/' + transaction})
                 else:
                     self.apollo_conn.send(topic, message_str)
-        else:
-            logging.warning("Tried to publish a message but there is no Apollo"
-                            " connection! (Did you call run() on your Worker?)")
+        except AttributeError:
+            raise WetwareException("Tried to publish a message but there is no"
+                                   " Apollo connection! (Did you try to"
+                                   " publish() without calling run() in your"
+                                   " Worker?)")
 
     def reply(self, message):
         """Send a reply to whomever sent you a message with a reply-to.
