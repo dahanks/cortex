@@ -246,28 +246,28 @@ class Worker(object):
     def handle_reply(self, frame, transaction):
         """Handles a reply over a temp queue to a request you already submitted
 
-        If a transaction is provided with a callback function, we'll
-        try to call the function.  We do not guarantee much error/exception
-        handling here, but we will make sure what you passed is actually a function.
+        Calling this methods requires that you've already created a transaction
+        with a callback function.  That callback will be called in this method.
+        We do not guarantee much error/exception handling here, but we will make
+        sure what you passed is actually a function.
+
+        This method can be overridden (call SUPER first!).  If overridden
+        (with super), callbacks will still be called, then the subclass
+        implementation of this method will run--sort of like a 'finally'.
         """
-        logging.debug("GOT OUR SECONDARY RESPONSE")
-        logging.debug(transaction)
         try:
             # calling handle_reply implies there was a transaction
-            #  with a callback and a temp_sub, but not necessarily
-            #  a transaction/reply-to destination
+            #  with a callback and a temp_sub
             callback = self.transactions[transaction]['callback']
             temp_sub = self.transactions[transaction]['temp_sub']
             self.apollo_conn.unsubscribe(temp_sub)
-            logging.debug("UNSUBSCRIBING FROM SECONDARY SUB")
-            logging.debug(temp_sub)
         except (KeyError, ValueError):
             logging.exception("Somehow you got a message on a temp queue"
                               " that you weren't keeping track of."
                               " That is very weird so let's cut our losses.")
             raise
 
-        #TODO: test the error cases here
+        # a reply-to destination is not necessarily required
         destination = None
         if 'reply-to' in self.transactions[transaction]:
             destination = self.transactions[transaction]['reply-to']
@@ -276,11 +276,7 @@ class Worker(object):
         # (regardless of how callback goes below)
         if transaction in self.transactions:
             del self.transactions[transaction]
-            logging.debug("THIS SHOULD BE EMPTY")
-            logging.debug(self.transactions)
 
-        #make sure callback is a valid function
-        logging.debug("SEND BACK TO {}".format(destination))
         if (callback
             and hasattr(callback, '__name__')
             and hasattr(callback, '__call__')
@@ -288,7 +284,7 @@ class Worker(object):
             try:
                 callback(frame, destination)
             except TypeError:
-                logging.exception("You implemented a callback with an invalid definition")
+                raise WetwareException("You implemented a callback with an invalid definition")
         else:
             raise WetwareException("Invalid callback provided: {0}".format(callback))
 

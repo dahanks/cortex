@@ -27,16 +27,17 @@ class WetwareWorker(Worker):
         if frame.headers['destination'] == self.args['input_topic']:
             if float(message['secs']) == 1:
                 # TEST SYNCRONOUS
-                time.sleep(1)
-                self.reply({'seconds': 'that was JUST one second'})
+                #time.sleep(1)
+                #self.reply({'seconds': 'that was JUST one second'})
                 # TEST ASYNCRONOUS
-                #self.publish(message, callback=self.after_one, transaction=transaction)
+                self.test = 1
+                self.publish(message, callback=self.test, transaction=transaction)
             elif float(message['secs']) == 5:
                 # TEST SYNCRONOUS
-                time.sleep(5)
-                self.reply({'seconds': 'that was TOTALLY five seconds'})
+                #time.sleep(5)
+                #self.reply({'seconds': 'that was TOTALLY five seconds'})
                 # TEST ASYNCRONOUS
-                #self.publish(message, callback=self.after_five, transaction=transaction)
+                self.publish(message, callback=self.after_five, transaction=transaction)
             else:
                 logging.debug(message)
 
