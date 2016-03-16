@@ -151,9 +151,9 @@ class Worker(object):
         topic you configured with your OUTPUT_TOPIC parameter in your config
         file. You know, cause we're nice.
 
-        If you expect a reply, pass in a callback function to run when you get
-        the response.  If you don't specify this, handle_reply() will have to
-        handle all messages.
+        If you expect a reply, you must supply a callback function to run when
+        for when you get the response.  This is required, or else your message
+        won't get the appropriate reply-to headers.
 
         If you had previous received a message requiring a response, and you're
         calling publish() as part of that work, specify the transaction related
@@ -171,12 +171,9 @@ class Worker(object):
         else:
             message_str = str(message)
 
-        # Catch exception when you use Apollo connection without calling run()
         try:
             # If no topic is provided, use the output_topic from config file
             if not topic:
-                # But, of course, make sure there is one in the config
-                # If not, return early
                 if 'output_topic' not in self.args:
                     raise ConfigException("Tried to publish a message but there is no"
                                     " output_topic specified in the config!")
@@ -190,22 +187,17 @@ class Worker(object):
                 if callback == 0 or callback == False:
                     raise WetwareException("Provided a callback that wasn't a"
                                            " function! Callback: {0}".format(callback))
-                # only callback specified, so create a new transaction
+                # specifying a callback without a transaction is totally valid
                 if callback and not transaction:
-                    logging.debug("PUBLISHING WITH BRAND NEW TRANSACTION!")
                     transaction = str(UUID())
                     self.transactions[transaction] = {}
-                # this happens whether or not the transaction was just
-                #  created in the above check
+                # this happens even if the transaction was just created above
                 if callback:
-                    logging.debug("PUBLISHING BASED ON TRANSACTION {}".format(transaction))
                     self.transactions[transaction]['callback'] = callback
                     temp_sub = self.apollo_conn.subscribe('/temp-queue/' + transaction,
                                                           {StompSpec.ACK_HEADER:
                                                            StompSpec.ACK_CLIENT_INDIVIDUAL})
                     self.transactions[transaction]['temp_sub'] = temp_sub
-                    logging.debug("HERES OUR MAP")
-                    logging.debug(self.transactions[transaction])
                     self.apollo_conn.send(topic, message_str,
                                           headers={'reply-to': '/temp-queue/' + transaction})
                 else:
