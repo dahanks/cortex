@@ -25,10 +25,8 @@ class Worker(object):
     def __init__(self, subclass_section=None):
         self.args = self.__parse_all_params(subclass_section)
         self.apollo_conn = None
-        self.reply_map = {}
-        # self.reply_topics = []
-        # self.reply_subs = []
-        # self.reply_callbacks = []
+        #TODO: make this a class?
+        self.transactions = {}
 
     def __parse_all_params(self, subclass_section=None):
         """Parse all command line and config args of base and optional subclass
@@ -194,50 +192,40 @@ class Worker(object):
     def on_message(self, frame):
         """Handles incoming messages and runs operations (OVERRIDE and SUPER)
 
-        Handles the following operations in the base class:
-            'quit' and 'exit'
-            'command_sync'
-            'command_async'
-
         This method is designed to be overridden (call super first!) with
-        additional operations.
+        additional operations to handle messages.
 
-        If the message received expects a reply, the temp queue topic will
-        be placed in a queue (a queue of temp queue topics, yes).  To reply
-        to the requestor, call self.reply() instead of self.publish().
+        If the message received expects a reply, a transaction will be recorded,
+        with the reply-to destination tracked.  If, before replying, this worker
+        needs to publish and receive a response, those elements will be recorded
+        linked to this transaction.
 
-        Be sure to *AT LEAST* check that your frame header destination is what
-        you expect so that you can filter out replies on temp-queues.  Otherwise,
-        you'll call self.on_message() for replies the same you would for original
-        messages.
+        When you override this method (which is essentially a requirements), you
+        should check that your frame header destination is what you expect so
+        that you can filter out replies on temp-queues.  Otherwise, you'll
+        accidentally call self.on_message() for replies the same you would for
+        original messages.
 
-        Returns False if message fails verification.
-        Otherwise returns the message frame so subclass has access to it on
-        overriding this function.
+        Returns a transaction so that you may modify it in the base class and
+        optionally pass it into any secondary publish calls.
         """
         # must ack to remove from queue
         self.apollo_conn.ack(frame)
 
-        # check if this is something you need to reply to
-        # NOTE: YOU MUST NOT REPLY if you're not expected to!
-        #  Since this is a list (queue), if you reply(), you might
-        #  be replying to somebody else's request
-
-        #None if we don't need to reply
+        # check if this is something you need to reply to, and create a
+        #  a transaction if so; otherwise, transaction is None
         transaction_uuid = None
-
         if 'reply-to' in frame.headers:
-            # self.reply_topics.append(frame.headers['reply-to'])
             transaction_uuid = str(UUID())
-            self.reply_map[transaction_uuid] = {'reply-to': frame.headers['reply-to']}
+            self.transactions[transaction_uuid] = {'reply-to': frame.headers['reply-to']}
             logging.debug("GOT A TRANSACTION")
             logging.debug(transaction_uuid)
-            logging.debug(self.reply_map[transaction_uuid])
+            logging.debug(self.transactions[transaction_uuid])
 
         # Raise FrameException if frame is bad
         try:
             self.verify_frame(frame)
-            # check if this is a reply you're waiting on
+            # check if this is a reply you're waiting for
             if frame.headers['destination'].startswith('/queue/temp'):
                 # the destination we used to subscribe looks a little different
                 #  than the destination coming in this time; hence, the weird
@@ -246,28 +234,25 @@ class Worker(object):
                 logging.debug("GOT OUR SECONDARY RESPONSE")
                 logging.debug(transaction)
                 try:
-                    pass
-                    #sub_index = self.reply_subs.index(('destination',
-                    #                                   '/temp-queue/' + temp_sub))
-                except ValueError:
+                    temp_sub = self.transactions[transaction]['temp_sub']
+                    self.apollo_conn.unsubscribe(temp_sub)
+                    logging.debug("UNSUBSCRIBING FROM SECONDARY SUB")
+                    logging.debug(temp_sub)
+                except KeyError, ValueError:
                     logging.error("Somehow you got a message on a temp queue"
-                                  " that you lost track of.  That is very weird"
-                                  " so let's cut our losses.")
+                                  " that you weren't keeping track of."
+                                  " That is very weird so let's cut our losses.")
                     raise
-                logging.debug("UNSUBSCRIBING FROM SECONDARY SUB")
-                logging.debug(self.reply_map[transaction]['temp_sub'])
-                self.apollo_conn.unsubscribe(self.reply_map[transaction]['temp_sub'])
-                #self.apollo_conn.unsubscribe(self.reply_subs.pop(sub_index))
                 self.handle_reply(frame, transaction)
         except FrameException, e:
             # Frame not verified; send an error in reply (if expected)
             #  otherwise, just skip it and continue outside loop...
+            #TODO: test this
             if 'reply-to' in frame.headers:
-                self.reply({ 'Error': 'Frame failed verification' })
+                self.reply({ 'Error': 'Frame failed verification' }, frame.headers['reply-to'])
             raise
 
-        # returning frame so subclass can have it when overriding this function
-        #  also returning transaction ID for handling in your reply
+        # returning transaction ID for handling in your reply
         return transaction_uuid
 
     def handle_reply(self, frame, transaction):
@@ -279,8 +264,8 @@ class Worker(object):
         function, but we do not guarantee that it exists.
         """
         #callback = self.reply_callbacks.pop()
-        callback = self.reply_map[transaction]['callback']
-        destination = self.reply_map[transaction]['reply-to']
+        callback = self.transactions[transaction]['callback']
+        destination = self.transactions[transaction]['reply-to']
         logging.debug("SEND BACK TO {}".format(destination))
         if (callback
             and hasattr(callback, '__name__')
@@ -368,8 +353,8 @@ class Worker(object):
                         logging.debug("PUBLISHING WITH BRAND NEW TRANSACTION!")
                         temp_uuid = str(UUID())
                         #this will already exist if we started a transaction
-                        if temp_uuid not in self.reply_map:
-                            self.reply_map[temp_uuid] = {}
+                        if temp_uuid not in self.transactions:
+                            self.transactions[temp_uuid] = {}
                     # self.reply_subs.append(
                     #     self.apollo_conn.subscribe('/temp-queue/' + temp_uuid,
                     #                                {StompSpec.ACK_HEADER:
@@ -381,10 +366,10 @@ class Worker(object):
                     temp_sub = self.apollo_conn.subscribe('/temp-queue/' + temp_uuid,
                                                           {StompSpec.ACK_HEADER:
                                                            StompSpec.ACK_CLIENT_INDIVIDUAL})
-                    self.reply_map[temp_uuid]['callback'] = callback
-                    self.reply_map[temp_uuid]['temp_sub'] = temp_sub
+                    self.transactions[temp_uuid]['callback'] = callback
+                    self.transactions[temp_uuid]['temp_sub'] = temp_sub
                     logging.debug("HERES OUR MAP")
-                    logging.debug(self.reply_map[temp_uuid])
+                    logging.debug(self.transactions[temp_uuid])
                     self.apollo_conn.send(topic, message_str,
                                           headers={'reply-to': '/temp-queue/' + temp_uuid})
                 else:
@@ -404,8 +389,8 @@ class Worker(object):
         try:
             self.publish(message, destination)
             #remove the transaction from our map
-            if destination in self.reply_map:
-                del self.reply_map[destination]
+            if destination in self.transactions:
+                del self.transactions[destination]
         except IndexError:
             logging.warning("Tried to reply when no one was expecting a reply!"
                             " Be careful: whatever you're doing may cause you"
