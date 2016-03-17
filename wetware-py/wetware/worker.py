@@ -201,7 +201,7 @@ class Worker(object):
                     self.apollo_conn.send(topic, message_str,
                                           headers={'reply-to': '/temp-queue/' + transaction})
                 # this branch is basically reply() but for async
-                else if transaction:
+                elif transaction:
                     self.apollo_conn.send(self.transactions[transaction]['reply-to'], message_str)
                 else:
                     self.apollo_conn.send(topic, message_str)
@@ -211,16 +211,16 @@ class Worker(object):
                                    " publish() without calling run() in your"
                                    " Worker?)")
 
-    def reply(self, message):
+    def reply(self, message, transaction=None):
         """Send a reply to whomever sent you a message with a reply-to.
 
-        This function should only ever be used in a completely synchronous, in
-        which case you'll only ever have a single transaction.  This function
-        is just a convenient way for you to publish without having to specify
-        the destination.
+        In synchronous workers, this function is just a convenient way for you
+        to publish without having to specify the destination, since there is
+        only ever one transaction at a time.
 
-        If you are writing an asynchronous worker, you should have specified
-        a callback function.  In that function you should use publish().
+        In asynchronous workers, this is just a convenient way to pass the
+        pass in the transaction instead of looking up the destination in the
+        sublass.
         """
         if len(self.transactions) == 1:
             # grab the only transaction, publish to it, and delete it
@@ -229,6 +229,9 @@ class Worker(object):
             del self.transactions[trans_id]
         elif len(self.transactions) == 0:
             raise WetwareException("Tried to use reply() when no one was expecting it!")
+        elif transaction:
+            self.publish(message, self.transactions[transaction]['reply-to'])
+            del self.transactions[transaction]
         else:
             raise WetwareException("Tried to use reply() when there are multiple, asynchronous transactions!")
 
