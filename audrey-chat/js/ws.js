@@ -2,7 +2,7 @@ var client;
 var url = "ws://" + location.host + ":61623";
 var user = "admin";
 var password = "password";
-var wetware_topic = "/topic/wetware.nlp";
+var wetware_topic = "/queue/wetware.nlp";
 var reply_topics = [];
 
 function setup_websocket() {
