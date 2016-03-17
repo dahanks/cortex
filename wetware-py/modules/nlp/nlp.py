@@ -16,25 +16,20 @@ class WetwareWorker(Worker):
         super(WetwareWorker, self).__init__(subclass_section)
 
     def on_message(self, frame):
-        transaction = None
-        try:
-            ### This header must not be modified ###
-            transaction = super(WetwareWorker, self).on_message(frame)
-            message = json.loads(frame.body)
-            ############## End header ##############
+        ### This header must not be modified ###
+        transaction = super(WetwareWorker, self).on_message(frame)
+        message = json.loads(frame.body)
+        ############## End header ##############
 
-            if frame.headers['destination'] == self.args['input_topic']:
-                self.process_nlp_statement(message, transaction)
-        except:
-            self.publish({'responses': "I'm terribly sorry.  I'm feeling faint.  Perhaps I should see a doctor..."}, transaction)
-            logging.exception("Caught Exception:")
+        if frame.headers['destination'] == self.args['input_topic']:
+            self.process_nlp_statement(message, transaction)
 
     def process_nlp_statement(self, message, transaction):
         for statement in message['statements']:
             if '?' in statement:
                 self.parse_interrogative_statement(statement, transaction)
             else:
-                self.parse_indicative_statement(statement)
+                self.parse_indicative_statement(statement, transaction)
 
     def parse_interrogative_statement(self, statement, transaction):
         words = statement.split(' ')
@@ -54,8 +49,8 @@ class WetwareWorker(Worker):
             else:
                 self.reply({'responses': "I'm terribly sorry, but I don't understand the question."}, transaction)
         except:
-            self.reply({'responses': "I'm terribly sorry, but I don't understand the question."}, transaction)
             logging.exception("Caught Exception:")
+            self.reply({'responses': "I'm terribly sorry, but I don't understand the question."}, transaction)
 
     def parse_question_does(self, words):
         does = words[0] #will disregard this
@@ -96,7 +91,7 @@ class WetwareWorker(Worker):
         statements.get_vertex_property(subj, "location")
         return statements
 
-    def parse_indicative_statement(self, statement):
+    def parse_indicative_statement(self, statement, transaction):
         words = statement.split(' ')
         try:
             subj = words[0].strip()
@@ -112,12 +107,12 @@ class WetwareWorker(Worker):
             else:
                 #otherwise, add nodes and edge (add_edge adds nodes and edge)
                 statements.add_edge(subj, pred, obj)
-            self.publish(statements, expect_reply=True, callback=self.acknowledge_response)
+            self.publish(statements, callback=self.acknowledge_response, transaction=transaction)
         except:
-            self.reply({'responses': "I'm having trouble understanding what it is you want to say..."})
             logging.exception("Caught Exception:")
+            self.reply({'responses': "I'm having trouble understanding what it is you want to say..."}, transaction)
 
-    def acknowledge_response(self, frame):
+    def acknowledge_response(self, frame, destination):
         #TODO: clean this up
         reply = {'responses': ""}
         try:
@@ -129,7 +124,7 @@ class WetwareWorker(Worker):
         except KeyError, ValueError:
             reply['responses'] = "Hmm, apologies...I've...lost my train of thought..."
             logging.exception("Caught Exception:")
-        self.reply(reply)
+        self.publish(reply, destination)
 
     def interpret_audrey_is(self, frame, destination):
         reply = {}
