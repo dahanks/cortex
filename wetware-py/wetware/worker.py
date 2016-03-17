@@ -191,7 +191,7 @@ class Worker(object):
                 if callback and not transaction:
                     transaction = str(UUID())
                     self.transactions[transaction] = {}
-                # this happens even if the transaction was just created above
+                # send message registering the callback
                 if callback:
                     self.transactions[transaction]['callback'] = callback
                     temp_sub = self.apollo_conn.subscribe('/temp-queue/' + transaction,
@@ -200,6 +200,9 @@ class Worker(object):
                     self.transactions[transaction]['temp_sub'] = temp_sub
                     self.apollo_conn.send(topic, message_str,
                                           headers={'reply-to': '/temp-queue/' + transaction})
+                # this branch is basically reply() but for async
+                else if transaction:
+                    self.apollo_conn.send(self.transactions[transaction]['reply-to'], message_str)
                 else:
                     self.apollo_conn.send(topic, message_str)
         except AttributeError:
