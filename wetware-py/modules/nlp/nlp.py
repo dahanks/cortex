@@ -16,92 +16,85 @@ class WetwareWorker(Worker):
         super(WetwareWorker, self).__init__(subclass_section)
 
     def on_message(self, frame):
+        transaction = None
         try:
             ### This header must not be modified ###
-            super(WetwareWorker, self).on_message(frame)
+            transaction = super(WetwareWorker, self).on_message(frame)
             message = json.loads(frame.body)
             ############## End header ##############
 
             if frame.headers['destination'] == self.args['input_topic']:
-                self.process_nlp_statement(message)
+                self.process_nlp_statement(message, transaction)
         except:
-            self.reply({'responses': "I'm terribly sorry.  I'm feeling faint.  Perhaps I should see a doctor..."})
+            self.publish({'responses': "I'm terribly sorry.  I'm feeling faint.  Perhaps I should see a doctor..."}, transaction)
             logging.exception("Caught Exception:")
 
-    def process_nlp_statement(self, message):
+    def process_nlp_statement(self, message, transaction):
         for statement in message['statements']:
             if '?' in statement:
-                self.parse_interrogative_statement(statement)
+                self.parse_interrogative_statement(statement, transaction)
             else:
                 self.parse_indicative_statement(statement)
 
-    def parse_interrogative_statement(self, statement):
+    def parse_interrogative_statement(self, statement, transaction):
         words = statement.split(' ')
-        if words[0] == 'Does':
-            self.parse_question_does(words)
-        elif words[0] == 'Where':
-            self.parse_question_where(words)
-        elif words[0] == 'Is':
-            self.parse_question_is(words)
-        elif words[0] == 'What':
-            self.parse_question_what_is_the(words)
-        else:
-            self.reply({'responses': "I'm terribly sorry, but I don't understand the question."})
+        try:
+            if words[0] == 'Does':
+                statements = self.parse_question_does(words)
+                self.publish(statements, callback=self.interpret_does_response, transaction=transaction)
+            elif words[0] == 'Where':
+                statements = self.parse_question_where(words)
+                self.publish(statements, callback=self.interpret_audrey_where, transaction=transaction)
+            elif words[0] == 'Is':
+                statements = self.parse_question_is(words)
+                self.publish(statements, callback=self.interpret_audrey_is, transaction=transaction)
+            elif words[0] == 'What':
+                statements = self.parse_question_what_is_the(words)
+                self.publish(statements, callback=self.interpret_audrey_what_is_the, transaction=transaction)
+            else:
+                self.reply({'responses': "I'm terribly sorry, but I don't understand the question."}, transaction)
+        except:
+            self.reply({'responses': "I'm terribly sorry, but I don't understand the question."}, transaction)
+            logging.exception("Caught Exception:")
 
     def parse_question_does(self, words):
-        try:
-            does = words[0] #will disregard this
-            subj = words[1].strip()
-            pred = words[2].strip() + 's' #add back indicative verb conj 's'
-            obj = words[3].strip()[:-1] #take off the question mark
-            gremlins = [
-                'g.V().has("name","' + subj + '").both("' + pred + '").has("name","' + obj + '")',
-                'g.V().has("name","' + subj + '").both("' + pred + '").both("' + pred + '").simplePath().has("name","' + obj + '")',
-                'g.V().has("name","' + subj + '").both("' + pred + '").both("' + pred + '").both("' + pred + '").simplePath().has("name","' + obj + '")'
-            ]
-            statements = Statements()
-            statements.gremlin(*gremlins)
-            self.publish(statements, expect_reply=True, callback=self.interpret_does_response)
-        except:
-            self.reply({'responses': "I'm terribly sorry, but I don't understand the question."})
-            logging.exception("Caught Exception:")
+        does = words[0] #will disregard this
+        subj = words[1].strip()
+        pred = words[2].strip() + 's' #add back indicative verb conj 's'
+        obj = words[3].strip()[:-1] #take off the question mark
+        gremlins = [
+            'g.V().has("name","' + subj + '").both("' + pred + '").has("name","' + obj + '")',
+            'g.V().has("name","' + subj + '").both("' + pred + '").both("' + pred + '").simplePath().has("name","' + obj + '")',
+            'g.V().has("name","' + subj + '").both("' + pred + '").both("' + pred + '").both("' + pred + '").simplePath().has("name","' + obj + '")'
+        ]
+        statements = Statements()
+        statements.gremlin(*gremlins)
+        return statements
 
     def parse_question_is(self, words):
-        try:
-            is_word = words[0] #will disregard this
-            subj = words[1].strip()
-            key = words[2].strip()[:-1]
-            gremlin = 'g.V().has("name","' + subj + '").values("' + key + '")'
-            statements = Statements()
-            statements.gremlin(gremlin)
-            self.publish(statements, expect_reply=True, callback=self.interpret_audrey_is)
-        except:
-            self.reply({'responses': "I'm terribly sorry, but I don't understand the question."})
-            logging.exception("Caught Exception:")
+        is_word = words[0] #will disregard this
+        subj = words[1].strip()
+        key = words[2].strip()[:-1]
+        gremlin = 'g.V().has("name","' + subj + '").values("' + key + '")'
+        statements = Statements()
+        statements.gremlin(gremlin)
+        return statements
 
     def parse_question_what_is_the(self, words):
-        try:
-            #0,1,2 What is the
-            key = words[3].strip()
-            #4 of
-            obj = words[5].strip()[:-1]
-            statements = Statements()
-            statements.get_vertex_property(obj, key)
-            self.publish(statements, expect_reply=True, callback=self.interpret_audrey_what_is_the)
-        except:
-            self.reply({'responses': "I'm terribly sorry, but I don't understand the question."})
-            logging.exception("Caught Exception:")
+        #0,1,2 What is the
+        key = words[3].strip()
+        #4 of
+        obj = words[5].strip()[:-1]
+        statements = Statements()
+        statements.get_vertex_property(obj, key)
+        return statements
 
     def parse_question_where(self, words):
-        try:
-            #0,1 Where is
-            subj = words[2].strip()[:-1]
-            statements = Statements()
-            statements.get_vertex_property(subj, "location")
-            self.publish(statements, expect_reply=True, callback=self.interpret_audrey_where)
-        except:
-            self.reply({'responses': "I'm terribly sorry, but I don't understand the question."})
-            logging.exception("Caught Exception:")
+        #0,1 Where is
+        subj = words[2].strip()[:-1]
+        statements = Statements()
+        statements.get_vertex_property(subj, "location")
+        return statements
 
     def parse_indicative_statement(self, statement):
         words = statement.split(' ')
@@ -138,16 +131,16 @@ class WetwareWorker(Worker):
             logging.exception("Caught Exception:")
         self.reply(reply)
 
-    def interpret_audrey_is(self, frame):
+    def interpret_audrey_is(self, frame, destination):
         reply = {}
         responses = json.loads(frame.body)['responses']
         if responses[0]:
             reply['responses'] = "Yes, I do believe so."
         else:
             reply['responses'] = "No, I don't believe that's true."
-        self.reply(reply)
+        self.publish(reply, destination)
 
-    def interpret_audrey_where(self, frame):
+    def interpret_audrey_where(self, frame, destination):
         reply = {}
         responses = json.loads(frame.body)['responses']
         location = responses[0]
@@ -156,9 +149,9 @@ class WetwareWorker(Worker):
             reply['responses'] = "Why it's right at {0}.".format(location)
         else:
             reply['responses'] = "You know, I don't know where it is!"
-        self.reply(reply)
+        self.publish(reply, destination)
 
-    def interpret_audrey_what_is_the(self, frame):
+    def interpret_audrey_what_is_the(self, frame, destination):
         reply = {}
         responses = json.loads(frame.body)['responses']
         value = responses[0]
@@ -166,9 +159,9 @@ class WetwareWorker(Worker):
             reply['responses'] = "It appears to be {0}.".format(value)
         else:
             reply['responses'] = "You know, I'm just not sure."
-        self.reply(reply)
+        self.publish(reply, destination)
 
-    def interpret_does_response(self, frame):
+    def interpret_does_response(self, frame, destination):
         #interpret response
         #respond to UI
         # if first answer if yes, conf = 1.0
@@ -195,7 +188,7 @@ class WetwareWorker(Worker):
         except KeyError, ValueError:
             reply['responses'] = "Hmm, apologies...I've...lost my train of thought..."
             logging.exception("Caught Exception:")
-        self.reply(reply)
+        self.publish(reply, destination)
 
     def define_default_args(self):
         ### This header must not be modified ###
