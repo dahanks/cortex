@@ -55,7 +55,7 @@ class WetwareWorker(Worker):
         #self.reply({'seconds':'that was one second'})
         self.reply({'seconds':'that was one second'}, transaction)
 
-    def after_five(self, frame, destination):
+    def after_five(self, frame, transaction):
         #self.reply({'seconds':'that was five second'})
         self.reply({'seconds':'that was five seconds'}, transaction)
 
