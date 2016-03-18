@@ -26,10 +26,10 @@ class WetwareWorker(Worker):
 
         if frame.headers['destination'] == self.args['input_topic']:
             if float(message['secs']) == 1:
-                # TEST SYNCRONOUS
+                # TEST SYNCRONOUS (tests reply() with no transaction)
                 #time.sleep(1)
                 #self.reply({'seconds': 'that was JUST one second'})
-                # TEST ASYNCRONOUS
+                # TEST ASYNCRONOUS (tests publish() with callback and transaction)
                 self.publish(message, callback=self.after_one, transaction=transaction)
             elif float(message['secs']) == 5:
                 # TEST SYNCRONOUS
@@ -40,8 +40,9 @@ class WetwareWorker(Worker):
             else:
                 logging.debug(message)
 
-    # UNCOMMENT THIS TO RUN ASYNC and SYNC TESTS
+    # COMMENT THIS TO RUN THE ABOVE ASYNC and SYNC TESTS
     # Test for simply sending a message and receiving a reply
+    #  tests publish() with a callback, but no transaction
     # def run(self):
     #     with ApolloConnection(self.args) as self.apollo_conn:
     #         self.publish({'secs': '1'}, callback=self.after_one)

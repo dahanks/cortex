@@ -96,7 +96,7 @@ class Worker(object):
             if 'reply-to' in frame.headers:
                 self.publish({ 'Error': 'Frame failed verification' }, frame.headers['reply-to'])
             raise
-        # returning transaction ID for sublass to pass into publish/callback
+        # returning transaction ID for subclass to pass into publish/callback
         return transaction_uuid
 
     def handle_reply(self, frame, transaction):
@@ -152,6 +152,9 @@ class Worker(object):
 
         You can specify a callback without a transaction, but that means you
         cannot be trying to respond to anyone else.
+
+        You cannot specify a transaction without a callback--that's basically
+        replying to someone directly.  Use reply() for that.
         """
 
         # If you pass a dict, we'll convert it to JSON for you
@@ -177,11 +180,15 @@ class Worker(object):
                 if callback == 0 or callback == False:
                     raise WetwareException("Provided a callback that wasn't a"
                                            " function! Callback: {0}".format(callback))
+                # a transaction without a callback should really just be reply()
+                if transaction and not callback:
+                    raise WetwareException("Provided a transaction without a"
+                                           " callback! Use reply() instead!")
                 # specifying a callback without a transaction is totally valid
                 if callback and not transaction:
                     transaction = str(UUID())
                     self.transactions[transaction] = {}
-                # send message registering the callback
+                # done with checks: now send the message registering the callback
                 if callback:
                     self.transactions[transaction]['callback'] = callback
                     temp_sub = self.apollo_conn.subscribe('/temp-queue/' + transaction,
@@ -205,9 +212,10 @@ class Worker(object):
         to publish without having to specify the destination, since there is
         only ever one transaction at a time.
 
-        In asynchronous workers, this is just a convenient way to pass the
-        pass in the transaction instead of looking up the destination in the
-        sublass.
+        In asynchronous workers, this is what you would use in the callback to
+        respond to something waiting for your asynchronous call to finish. It's
+        really just a convenient way to pass the transaction instead of looking
+        up the destination in the transactions map.
         """
         if transaction and 'reply-to' in self.transactions[transaction]:
             self.publish(message, self.transactions[transaction]['reply-to'])
