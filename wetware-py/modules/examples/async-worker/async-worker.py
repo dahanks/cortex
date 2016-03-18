@@ -51,13 +51,13 @@ class WetwareWorker(Worker):
     #             self.on_message(frame)
     #             break
 
-    def after_one(self, frame, destination):
+    def after_one(self, frame, transaction):
         #self.reply({'seconds':'that was one second'})
-        self.publish({'seconds':'that was one second'}, destination)
+        self.reply({'seconds':'that was one second'}, transaction)
 
     def after_five(self, frame, destination):
         #self.reply({'seconds':'that was five second'})
-        self.publish({'seconds':'that was five seconds'}, destination)
+        self.reply({'seconds':'that was five seconds'}, transaction)
 
     def handle_reply(self, frame, transaction):
         super(WetwareWorker, self).handle_reply(frame, transaction)
