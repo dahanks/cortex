@@ -112,7 +112,7 @@ class WetwareWorker(Worker):
             logging.exception("Caught Exception:")
             self.reply({'responses': "I'm having trouble understanding what it is you want to say..."}, transaction)
 
-    def acknowledge_response(self, frame, destination):
+    def acknowledge_response(self, frame, transaction):
         #TODO: clean this up
         reply = {'responses': ""}
         try:
@@ -124,18 +124,18 @@ class WetwareWorker(Worker):
         except KeyError, ValueError:
             reply['responses'] = "Hmm, apologies...I've...lost my train of thought..."
             logging.exception("Caught Exception:")
-        self.publish(reply, destination)
+        self.reply(reply, transaction)
 
-    def interpret_audrey_is(self, frame, destination):
+    def interpret_audrey_is(self, frame, transaction):
         reply = {}
         responses = json.loads(frame.body)['responses']
         if responses[0]:
             reply['responses'] = "Yes, I do believe so."
         else:
             reply['responses'] = "No, I don't believe that's true."
-        self.publish(reply, destination)
+        self.reply(reply, transaction)
 
-    def interpret_audrey_where(self, frame, destination):
+    def interpret_audrey_where(self, frame, transaction):
         reply = {}
         responses = json.loads(frame.body)['responses']
         location = responses[0]
@@ -144,9 +144,9 @@ class WetwareWorker(Worker):
             reply['responses'] = "Why it's right at {0}.".format(location)
         else:
             reply['responses'] = "You know, I don't know where it is!"
-        self.publish(reply, destination)
+        self.reply(reply, transaction)
 
-    def interpret_audrey_what_is_the(self, frame, destination):
+    def interpret_audrey_what_is_the(self, frame, transaction):
         reply = {}
         responses = json.loads(frame.body)['responses']
         value = responses[0]
@@ -154,9 +154,9 @@ class WetwareWorker(Worker):
             reply['responses'] = "It appears to be {0}.".format(value)
         else:
             reply['responses'] = "You know, I'm just not sure."
-        self.publish(reply, destination)
+        self.reply(reply, transaction)
 
-    def interpret_does_response(self, frame, destination):
+    def interpret_does_response(self, frame, transaction):
         #interpret response
         #respond to UI
         # if first answer if yes, conf = 1.0
@@ -183,7 +183,7 @@ class WetwareWorker(Worker):
         except KeyError, ValueError:
             reply['responses'] = "Hmm, apologies...I've...lost my train of thought..."
             logging.exception("Caught Exception:")
-        self.publish(reply, destination)
+        self.reply(reply, transaction)
 
     def define_default_args(self):
         ### This header must not be modified ###

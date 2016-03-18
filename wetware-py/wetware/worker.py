@@ -123,22 +123,12 @@ class Worker(object):
                               " specified a callback in publish().")
             raise
 
-        # a reply-to destination is not necessarily required
-        destination = None
-        if 'reply-to' in self.transactions[transaction]:
-            destination = self.transactions[transaction]['reply-to']
-
-        #remove the transaction from our tracking
-        # (regardless of how callback goes below)
-        if transaction in self.transactions:
-            del self.transactions[transaction]
-
         if (callback
             and hasattr(callback, '__name__')
             and hasattr(callback, '__call__')
             and callback.__name__ in dir(self)):
             try:
-                callback(frame, destination)
+                callback(frame, transaction)
             except TypeError:
                 raise WetwareException("You implemented a callback with an invalid definition")
         else:
@@ -200,9 +190,6 @@ class Worker(object):
                     self.transactions[transaction]['temp_sub'] = temp_sub
                     self.apollo_conn.send(topic, message_str,
                                           headers={'reply-to': '/temp-queue/' + transaction})
-                # this branch is basically reply() but for async
-                elif transaction:
-                    self.apollo_conn.send(self.transactions[transaction]['reply-to'], message_str)
                 else:
                     self.apollo_conn.send(topic, message_str)
         except AttributeError:
@@ -222,16 +209,19 @@ class Worker(object):
         pass in the transaction instead of looking up the destination in the
         sublass.
         """
-        if len(self.transactions) == 1:
-            # grab the only transaction, publish to it, and delete it
-            trans_id, transaction = self.transactions.items()[0]
-            self.publish(message, transaction['reply-to'])
-            del self.transactions[trans_id]
-        elif len(self.transactions) == 0:
-            raise WetwareException("Tried to use reply() when no one was expecting it!")
-        elif transaction:
+        if transaction and 'reply-to' in self.transactions[transaction]:
             self.publish(message, self.transactions[transaction]['reply-to'])
             del self.transactions[transaction]
+        elif len(self.transactions) == 1:
+            # grab the only transaction, publish to it, and delete it
+            trans_id, transaction = self.transactions.items()[0]
+            if 'reply-to' in transaction:
+                self.publish(message, transaction['reply-to'])
+                del self.transactions[trans_id]
+            else:
+                raise WetwareException("Tried to use reply() when no one was expecting it!")
+        elif len(self.transactions) == 0:
+            raise WetwareException("Tried to use reply() when no one was expecting it!")
         else:
             raise WetwareException("Tried to use reply() when there are multiple, asynchronous transactions!")
 
