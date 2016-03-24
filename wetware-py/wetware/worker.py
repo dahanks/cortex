@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import sys
 import os
 import argparse
 import ConfigParser
@@ -26,9 +25,244 @@ class Worker(object):
     def __init__(self, subclass_section=None):
         self.args = self.__parse_all_params(subclass_section)
         self.apollo_conn = None
-        self.reply_topics = []
-        self.reply_subs = []
-        self.reply_callbacks = []
+        self.transactions = {}
+
+    def run(self):
+        """Initialize Worker and loop while waiting for input.
+
+        If you want to use the Worker base class without running a service,
+        you'll need to override this function, but keep the first 'with' line.
+        """
+        with ApolloConnection(self.args) as self.apollo_conn:
+            # subscribe to topic and handle messages;
+            #  otherwise, just end and let something override run()
+            if "input_topic" in self.args and self.args['input_topic']:
+                while True:
+                    frame = self.apollo_conn.receiveFrame()
+                    logging.info("Received message: {0}".format(frame.info()))
+                    try:
+                        self.on_message(frame)
+                    # skip over bad frames, but halt on other exceptions
+                    except FrameException, e:
+                        logging.exception(e)
+            else:
+                logging.warning("No input topic was specified, so unless this"
+                                " function is overridden, nothing will happen")
+
+    def on_message(self, frame):
+        """Handles overhead of incoming messages, then let's subclass handle the
+        work.
+
+        This method is designed to be overridden (call super first!). Perform
+        work based on the queue/topic on which your Worker got the message.
+
+        If the message received expects a reply, a transaction will be recorded,
+        with the reply-to destination tracked.  If, before replying, this worker
+        needs to publish and receive a response, those elements will be recorded
+        and linked to this transaction.
+
+        When you override this method (which is effectively a requirement), you
+        should perform work based on the queue/topic on which this message was
+        received.  As a desired side-effect, this will ensure that you filter
+        out messages that came in as replies on temp-queues.  Otherwise, you'll
+        accidentally call self.on_message() for replies the same you would for
+        original messages.
+
+        Returns a transaction so that you may modify it in the base class and
+        optionally pass it into any secondary publish calls.
+        """
+        # must ack to remove from queue
+        self.apollo_conn.ack(frame)
+
+        # check if this is something you need to reply to, and create a
+        #  a transaction if so; otherwise, transaction is None
+        transaction_uuid = None
+        if 'reply-to' in frame.headers:
+            transaction_uuid = str(UUID())
+            self.transactions[transaction_uuid] = {'reply-to': frame.headers['reply-to']}
+
+        try:
+            self.verify_frame(frame)
+            # check if this is a reply you're waiting for
+            if frame.headers['destination'].startswith('/queue/temp'):
+                # the destination we used to subscribe looks a little different
+                #  than the destination coming in this time; hence, the weird
+                #  tuple check with string concatentation below.
+                transaction = str(frame.headers['destination'].split('.')[-1])
+                self.handle_reply(frame, transaction)
+        except FrameException, e:
+            # Frame not verified; send an error in reply (if expected)
+            #  otherwise, just skip it and continue outside loop...
+            if 'reply-to' in frame.headers:
+                self.publish({ 'Error': 'Frame failed verification' }, frame.headers['reply-to'])
+            raise
+        # returning transaction ID for subclass to pass into publish/callback
+        return transaction_uuid
+
+    def handle_reply(self, frame, transaction):
+        """Handles a reply over a temp queue to a request you already submitted
+
+        Calling this methods requires that you've already created a transaction
+        with a callback function.  That callback will be called in this method.
+        We do not guarantee much error/exception handling here, but we will make
+        sure what you passed is actually a function.
+
+        This method can be overridden (call SUPER first!).  If overridden
+        (with super), callbacks will still be called, then the subclass
+        implementation of this method will run--sort of like a 'finally'.
+        """
+        try:
+            # calling handle_reply implies there was a transaction
+            #  with a callback and a temp_sub
+            callback = self.transactions[transaction]['callback']
+            temp_sub = self.transactions[transaction]['temp_sub']
+            self.apollo_conn.unsubscribe(temp_sub)
+        except (KeyError, ValueError):
+            logging.exception("Somehow you got a message on a temp queue that"
+                              " you weren't keeping track of. You may not have"
+                              " specified a callback in publish().")
+            raise
+
+        if (callback
+            and hasattr(callback, '__name__')
+            and hasattr(callback, '__call__')
+            and callback.__name__ in dir(self)):
+            try:
+                callback(frame, transaction)
+            except TypeError:
+                raise WetwareException("You implemented a callback with an invalid definition")
+        else:
+            raise WetwareException("Invalid callback provided: {0}".format(callback))
+
+    def publish(self, message, topic=None, callback=None, transaction=None):
+        """Publish a message to a topic using your Apollo Connection
+
+        If no topic is supplied, we'll assume you want to publish output to the
+        topic you configured with your OUTPUT_TOPIC parameter in your config
+        file. You know, cause we're nice.
+
+        If you expect a reply, you must supply a callback function to run when
+        for when you get the response.  This is required, or else your message
+        won't get the appropriate reply-to headers.
+
+        If you had previous received a message requiring a response, and you're
+        calling publish() as part of that work, specify the transaction related
+        to the original request.  This will be passed into the callback so you
+        can respond to the appropriate destination.
+
+        You can specify a callback without a transaction, but that means you
+        cannot be trying to respond to anyone else.
+
+        You cannot specify a transaction without a callback--that's basically
+        replying to someone directly.  Use reply() for that.
+        """
+
+        # If you pass a dict, we'll convert it to JSON for you
+        if isinstance(message, dict):
+            message_str = json.dumps(message)
+        # Otherwise, we'll try to cast whatever you passed as a string
+        else:
+            message_str = str(message)
+
+        try:
+            # If no topic is provided, use the output_topic from config file
+            if not topic:
+                if 'output_topic' not in self.args:
+                    raise ConfigException("Tried to publish a message but there is no"
+                                    " output_topic specified in the config!")
+                else:
+                    topic = self.args['output_topic']
+            # Just check to see if we've specified a topic at this point.  This
+            # is totally redundant, but feels safer.
+            if topic:
+                #Suuuper esoteric corner-case where you set a callback that is
+                # not a function, but a variable set to 0 or False
+                if callback == 0 or callback == False:
+                    raise WetwareException("Provided a callback that wasn't a"
+                                           " function! Callback: {0}".format(callback))
+                # a transaction without a callback should really just be reply()
+                if transaction and not callback:
+                    raise WetwareException("Provided a transaction without a"
+                                           " callback! Use reply() instead!")
+                # specifying a callback without a transaction is totally valid
+                if callback and not transaction:
+                    transaction = str(UUID())
+                    self.transactions[transaction] = {}
+                # done with checks: now send the message registering the callback
+                if callback:
+                    self.transactions[transaction]['callback'] = callback
+                    temp_sub = self.apollo_conn.subscribe('/temp-queue/' + transaction,
+                                                          {StompSpec.ACK_HEADER:
+                                                           StompSpec.ACK_CLIENT_INDIVIDUAL})
+                    self.transactions[transaction]['temp_sub'] = temp_sub
+                    self.apollo_conn.send(topic, message_str,
+                                          headers={'reply-to': '/temp-queue/' + transaction})
+                else:
+                    self.apollo_conn.send(topic, message_str)
+        except AttributeError:
+            raise WetwareException("Tried to publish a message but there is no"
+                                   " Apollo connection! (Did you try to"
+                                   " publish() without calling run() in your"
+                                   " Worker?)")
+
+    def reply(self, message, transaction=None):
+        """Send a reply to whomever sent you a message with a reply-to.
+
+        In synchronous workers, this function is just a convenient way for you
+        to publish without having to specify the destination, since there is
+        only ever one transaction at a time.
+
+        In asynchronous workers, this is what you would use in the callback to
+        respond to something waiting for your asynchronous call to finish. It's
+        really just a convenient way to pass the transaction instead of looking
+        up the destination in the transactions map.
+        """
+        if transaction and 'reply-to' in self.transactions[transaction]:
+            self.publish(message, self.transactions[transaction]['reply-to'])
+            del self.transactions[transaction]
+        elif len(self.transactions) == 1:
+            # grab the only transaction, publish to it, and delete it
+            trans_id, transaction = self.transactions.items()[0]
+            if 'reply-to' in transaction:
+                self.publish(message, transaction['reply-to'])
+                del self.transactions[trans_id]
+            else:
+                raise WetwareException("Tried to use reply() when no one was expecting it!")
+        elif len(self.transactions) == 0:
+            raise WetwareException("Tried to use reply() when no one was expecting it!")
+        else:
+            raise WetwareException("Tried to use reply() when there are multiple, asynchronous transactions!")
+
+    def verify_frame(self, frame):
+        """Verify a frame (OVERRIDE and SUPER)
+
+        Verify that a frame is valid JSON and has the appropriate fields.
+        This function may be overrided by a subclass to add to the verification
+        but it must call the SUPER() first.
+
+        Raise a FrameException if frame is invalid; no need for a return value.
+        """
+        try:
+            message = json.loads(frame.body)
+            #DEPRECATED, but serves as a good example:
+            # handle "operation" messages for sync and async commands
+            if ('operation' in message and
+                message['operation'].startswith('command')):
+                if 'command' not in message:
+                    raise FrameException({'message': "Received a 'command' operation"
+                                           " without a 'command' field",
+                                           'info': frame.info(),
+                                           'body': frame.body})
+                if message['operation'] not in ('command_sync',
+                                                'command_async'):
+                    raise FrameException({'message': "Received an unknown 'command' operation",
+                                           'info': frame.info(),
+                                           'body': frame.body})
+        except (TypeError, ValueError):
+            # raising FrameException so we can skip it--this shouldn't be fatal
+            raise FrameException({'message': "Received an invalid JSON object in message",
+                                   'info': frame.info(),
+                                   'body': frame.body})
 
     def __parse_all_params(self, subclass_section=None):
         """Parse all command line and config args of base and optional subclass
@@ -168,224 +402,10 @@ class Worker(object):
                     value = check_for_bool(value)
                     config_dict[option] = value
             except ConfigParser.NoSectionError:
-                logging.error("Your config does not have a '{0}' section"
-                              " for your Worker subclass!".format(subclass_section))
+                logging.exception("Your config does not have a '{0}' section"
+                                  " for your Worker subclass!".format(subclass_section))
                 raise
-
         return config_dict
-
-    def run(self):
-        with ApolloConnection(self.args) as self.apollo_conn:
-            # subscribe to topic and handle messages;
-            #  otherwise, just end and let something override run()
-            if "input_topic" in self.args and self.args['input_topic']:
-                while True:
-                    frame = self.apollo_conn.receiveFrame()
-                    logging.info("Received message: {0}".format(frame.info()))
-                    try:
-                        self.on_message(frame)
-                    # skip over bad frames, but halt on other exceptions
-                    except FrameException, e:
-                        logging.exception(e)
-            else:
-                logging.warning("No input topic was specified, so unless this"
-                                " function is overridden, nothing will happen")
-
-    def on_message(self, frame):
-        """Handles incoming messages and runs operations (OVERRIDE and SUPER)
-
-        Handles the following operations in the base class:
-            'quit' and 'exit'
-            'command_sync'
-            'command_async'
-
-        This method is designed to be overridden (call super first!) with
-        additional operations.
-
-        If the message received expects a reply, the temp queue topic will
-        be placed in a queue (a queue of temp queue topics, yes).  To reply
-        to the requestor, call self.reply() instead of self.publish().
-
-        Returns False if message fails verification.
-        Otherwise returns the message frame so subclass has access to it on
-        overriding this function.
-        """
-        # must ack to remove from queue
-        self.apollo_conn.ack(frame)
-
-        # check if this is something you need to reply to
-        # NOTE: YOU MUST NOT REPLY if you're not expected to!
-        #  Since this is a list (queue), if you reply(), you might
-        #  be replying to somebody else's request
-        if 'reply-to' in frame.headers:
-            self.reply_topics.append(frame.headers['reply-to'])
-
-        # Raise FrameException if frame is bad
-        try:
-            self.verify_frame(frame)
-            # check if this is a reply you're waiting on
-            if frame.headers['destination'].startswith('/queue/temp'):
-                # the destination we used to subscribe looks a little different
-                #  than the destination coming in this time; hence, the weird
-                #  tuple check with string concatentation below.
-                temp_sub = str(frame.headers['destination'].split('.')[-1])
-                try:
-                    sub_index = self.reply_subs.index(('destination',
-                                                       '/temp-queue/' + temp_sub))
-                except ValueError:
-                    logging.error("Somehow you got a message on a temp queue"
-                                  " that you lost track of.  That is very weird"
-                                  " so let's cut our losses.")
-                    raise
-                self.apollo_conn.unsubscribe(self.reply_subs.pop(sub_index))
-                self.handle_reply(frame)
-        except FrameException, e:
-            # Frame not verified; send an error in reply (if expected)
-            #  otherwise, just skip it and continue outside loop...
-            if 'reply-to' in frame.headers:
-                self.reply({ 'Error': 'Frame failed verification' })
-            raise
-
-        # returning frame so subclass can have it when overriding this function
-        return frame
-
-        ###No, I don't think we want to allow this remote access right now...
-        # if 'operation' in message:
-        #     operation = message['operation'].lower()
-        #     if operation == "quit" or operation == "exit":
-        #         logging.info("Received command to exit. Disconnecting...")
-        #         sys.exit(0)
-
-        #     # TODO: need some security to messages that can run arbitrary cmds!
-        #     elif operation.startswith("command"):
-        #         command = message['command']
-        #         command_args = command.split()
-        #         # log if the message contained a log_file; otherwise, don't log
-        #         log = None if 'log_file' not in message else message['log_file']
-        #         if operation == 'command_sync':
-        #             logging.info("Received message to run a synchronous command")
-        #             return_code = run_command(command_args, sync=True, log_file=log)
-        #         elif operation == 'command_async':
-        #             logging.info("Received message to run an asynchronous command")
-        #             pid = run_command(command_args, sync=False, log_file=log)
-
-    def handle_reply(self, frame):
-        """Handles a reply over a temp queue to a request you already submitted
-
-        All replies will look for a callback (regardless of whether or not you
-        passed one in your publish() call.  The callback will be None if you
-        did not pass one.  If the callback is valid, we'll try to call the
-        function, but we do not guarantee that it exists.
-        """
-        callback = self.reply_callbacks.pop()
-        if (callback
-            and hasattr(callback, '__name__')
-            and hasattr(callback, '__call__')
-            and callback.__name__ in dir(self)):
-            callback(frame)
-        elif not callback:
-            #No callback is fine, we just won't do anything
-            pass
-        else:
-            raise WetwareException("Invalid callback provided: {0}".format(callback))
-
-    def verify_frame(self, frame):
-        """Verify a frame (OVERRIDE and SUPER)
-
-        Verify that a frame is valid JSON and has the appropriate fields.
-        This function may be overrided by a subclass to add to the verification
-        but it must call the SUPER() first.
-
-        Returns True/False when validation passes/fails.
-        """
-        try:
-            message = json.loads(frame.body)
-            #handle "operation" messages for sync and async commands
-            if ('operation' in message and
-                message['operation'].startswith('command')):
-                if 'command' not in message:
-                    raise FrameException({'message': "Received a 'command' operation"
-                                           " without a 'command' field",
-                                           'info': frame.info(),
-                                           'body': frame.body})
-                if message['operation'] not in ('command_sync',
-                                                'command_async'):
-                    raise FrameException({'message': "Received an unknown 'command' operation",
-                                           'info': frame.info(),
-                                           'body': frame.body})
-        except ValueError:
-            # raising FrameException so we can skip it--this shouldn't be fatal
-            raise FrameException({'message': "Received an invalid JSON object in message",
-                                   'info': frame.info(),
-                                   'body': frame.body})
-
-    """Publish a message to a topic using your Apollo Connection
-
-    If no topic is supplied, we assume you want to publish output to the
-    topic you configured with your OUTPUT_TOPIC parameter in your config
-    file. You know, cause we're nice.
-
-    Setting expect_reply to True establishes a subscription to a temp-queue
-    for your response.  When you get the response, this worker will call
-    self.handle_reply() to handle it, and the worker will unsubscribe from
-    the temp queue.
-
-    Returns False if you never specified an OUTPUT_TOPIC.
-    """
-    def publish(self, message, topic=None, expect_reply=False, callback=None):
-        # If you pass a dict, we'll convert it to JSON for you
-        if isinstance(message, dict):
-            message_str = json.dumps(message)
-        # Otherwise, we'll try to cast whatever you passed as a string
-        else:
-            message_str = str(message)
-
-        # Hopefully you've initialized your Apollo connection via run()
-        if self.apollo_conn:
-            # If no topic is provided, use the output_topic from config file
-            if not topic:
-                # But, of course, make sure there is one in the config
-                # If not, return early
-                if 'output_topic' not in self.args:
-                    raise ConfigException("Tried to publish a message but there is no"
-                                    " output_topic specified in the config!")
-                else:
-                    topic = self.args['output_topic']
-            # Just check to see if we've specified a topic at this point.  This
-            # is totally redundant, but feels safer.
-            if topic:
-                if expect_reply:
-                    temp_uuid = str(UUID())
-                    self.reply_subs.append(
-                        self.apollo_conn.subscribe('/temp-queue/' + temp_uuid,
-                                                   {StompSpec.ACK_HEADER:
-                                                    StompSpec.ACK_CLIENT_INDIVIDUAL}))
-                    if callback:
-                        self.reply_callbacks.append(callback)
-                    else:
-                        self.reply_callbacks.append(None)
-                    self.apollo_conn.send(topic, message_str,
-                                          headers={'reply-to': '/temp-queue/' + temp_uuid})
-                else:
-                    self.apollo_conn.send(topic, message_str)
-        else:
-            logging.warning("Tried to publish a message but there is no Apollo"
-                            " connection! (Did you call run() on your Worker?)")
-
-    def reply(self, message):
-        """Send a reply to the last person who was expecting it.
-
-        Call this after you've received a message expecting a reply and you've
-        done the work to send in the reply.  This takes the longest-waiting
-        reply topic out of the queue, so make sure you're replying to things
-        in order!
-        """
-        try:
-            self.publish(message, self.reply_topics.pop(0))
-        except IndexError:
-            logging.warning("Tried to reply when no one was expecting a reply!"
-                            " Be careful: whatever you're doing may cause you"
-                            " to reply to the wrong thing in the future!")
 
 def check_for_bool(value):
     if value.lower() == 'true':
