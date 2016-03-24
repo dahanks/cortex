@@ -4,6 +4,7 @@ var user = "admin";
 var password = "password";
 var wetware_topic = "/queue/wetware.nlp";
 var reply_topics = [];
+var reconnect_interval;
 
 function setup_websocket() {
     if (window.WebSocket) {
@@ -29,19 +30,17 @@ function on_message(message) {
 }
 
 function connect_callback(frame) {
-//    audrey_subscription = client.subscribe(audrey_topic, on_message);
+    clearInterval(reconnect_interval);
 }
 
 function error_callback(error) {
-    var json_data_str = JSON.stringify(error);
-    console.log("Error: " + JSON.stringify(error));
-    //TODO: verify that this works at all
-    if (error['headers']) {
-        var message = error['headers']['message'];
-        console.log("Error: " + message);
-        if (message.indexOf("Stale connection") != -1){
+    if (error.indexOf("Stale connection") != -1){
+        client.connect(user, password, connect_callback, error_callback);
+    } else if (error.indexOf("Lost connection") != -1){
+        reconnect_interval = setInterval(function() {
+            client = Stomp.client(url);
             client.connect(user, password, connect_callback, error_callback);
-        }
+        }, 5000);
     }
 }
 
