@@ -31,16 +31,17 @@ function on_message(message) {
 
 function connect_callback(frame) {
     clearInterval(reconnect_interval);
+    reconnect_interval = "";
 }
 
 function error_callback(error) {
-    if (error.indexOf("Stale connection") != -1){
-        client.connect(user, password, connect_callback, error_callback);
-    } else if (error.indexOf("Lost connection") != -1){
+    if (!reconnect_interval &&
+        (error.indexOf("Stale connection") != -1 ||
+         error.indexOf("Lost connection") != -1)) {
         reconnect_interval = setInterval(function() {
             client = Stomp.client(url);
             client.connect(user, password, connect_callback, error_callback);
-        }, 5000);
+        }, 10000);
     }
 }
 
