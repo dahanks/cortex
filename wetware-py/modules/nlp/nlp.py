@@ -115,41 +115,38 @@ class WetwareWorker(Worker):
             self.reply({'responses': "I'm having trouble understanding what it is you want to say..."}, transaction)
 
     def acknowledge_response(self, frame, context, transaction):
-        #TODO: clean this up
-        reply = {'responses': ""}
-        try:
-            responses = json.loads(frame.body)['responses']
-            for response in responses:
-                if not response:
-                    reply['responses'] = "Hmm, apologies...I've...lost my train of thought..."
-            reply['responses'] = "Alright, then.  I'll note that."
-        except KeyError, ValueError:
-            reply['responses'] = "Hmm, apologies...I've...lost my train of thought..."
-            logging.exception("Caught Exception:")
+        responses = Responses(frame)
+        for response in responses:
+            if not response:
+                reply = Statements("Hmm, apologies...I've...lost my train of thought...")
+        reply = Statements("Alright, then.  I'll note that.")
         self.reply(reply, transaction)
 
     def interpret_audrey_is(self, frame, context, transaction):
         responses = Responses(frame)
         if responses[0]:
-            self.reply(Statements("Yes, I do believe so."), transaction)
+            reply = Statements("Yes, I do believe so.")
         else:
-            self.reply(Statements("No, I don't believe that's true."), transaction)
+            reply = Statements("No, I don't believe that's true.")
+        self.reply(reply, transaction)
 
     def interpret_audrey_where(self, frame, context, transaction):
         responses = Responses(frame)
         location = responses[0]
         if location:
-            self.reply(Statements("Why it's right at {0}.".format(location)), transaction)
+            reply = Statements("Why it's right at {0}.".format(location))
         else:
-            self.reply(Statements("You know, I don't know where {0} is!".format(context['subj'])), transaction)
+            reply = Statements("You know, I don't know where {0} is!".format(context['subj']))
+        self.reply(reply, transaction)
 
     def interpret_audrey_what_is_the(self, frame, context, transaction):
         responses = Responses(frame)
         value = responses[0]
         if value:
-            self.reply(Statements("It appears to be {0}.".format(value)), transaction)
+            reply = Statements("It appears to be {0}.".format(value))
         else:
-            self.reply(Statements("You know, I'm just not sure."), transaction)
+            reply = Statements("You know, I'm just not sure.")
+        self.reply(reply, transaction)
 
     def interpret_does_response(self, frame, context, transaction):
         #interpret response
