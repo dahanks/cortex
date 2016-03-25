@@ -1,15 +1,21 @@
 #!/usr/bin/env python
 
 import logging
+import json
 
-#This is just a dictionary that automatically has an array
-# under the key 'statements', since that's what the Neuron
-# API dictates.  All member functions add statements to
-# 'statements', then you publish the Statement object.
+"""This is just a dictionary that automatically has arrays under the keys
+   'statements' and 'responses', since that's what the Neuron API dictates.
+   For publishing queries, member functions add statements to 'statements', then
+   you publish the Statement object.
+
+   Responses are the same, just intended to have a semantic difference: they are
+   in reply to some other original query made to you.
+"""
 class Statements(dict):
     def __init__(self, *arg, **kwargs):
         super(Statements, self).__init__(self, *arg, **kwargs)
         self['statements'] = []
+        self['responses'] = []
 
     #Add a vertex and guarantee that it is unique by referring
     # to the "name" property (which will be our vertex index)"
@@ -151,3 +157,23 @@ class Statements(dict):
         addedge_statement['properties'] = properties
         output_statement['fxns'].append(addedge_statement)
         return output_statement
+
+    """Add a response to send to someone who already sent you a query.
+    """
+    def add_response(self, message_str):
+        self['responses'].append(str(message_str))
+
+"""This may be a little anti-Pythonic, but here it is:
+   This is just a Python list that can be created by interpreting the
+   response from Neuron.  It does very little, but it feels a bit nicer
+   than having every Worker callback parse the same element from a json
+   object.
+
+   Feel free not to use this.
+"""
+class Responses(list):
+    def __init__(self, frame):
+        if 'responses' in json.loads(frame.body):
+            list.__init__(self, json.loads(frame.body)['responses'])
+        else:
+            list.__init__(self)
