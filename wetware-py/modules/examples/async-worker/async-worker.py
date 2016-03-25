@@ -52,11 +52,11 @@ class WetwareWorker(Worker):
     #             self.on_message(frame)
     #             break
 
-    def after_one(self, frame, transaction):
+    def after_one(self, frame, context, transaction):
         #self.reply({'seconds':'that was one second'})
         self.reply({'seconds':'that was one second'}, transaction)
 
-    def after_five(self, frame, transaction):
+    def after_five(self, frame, context, transaction):
         #self.reply({'seconds':'that was five second'})
         self.reply({'seconds':'that was five seconds'}, transaction)
 
