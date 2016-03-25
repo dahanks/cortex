@@ -194,7 +194,6 @@ class WetwareWorker(Worker):
 
         for key in ['statements']:
             if key not in message:
-                logging.debug(message)
                 raise FrameException("Message has no {0} field".format(key))
 
 def main():
