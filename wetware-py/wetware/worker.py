@@ -149,6 +149,9 @@ class Worker(object):
         If you would like to remember some context for when the callback is
         invoked, pass a dictionary as the 'context' parameter.
 
+        Callback functions must have the signature:
+            def your_callback(frame, context, transaction):
+
         If you had previously received a message requiring a response and are
         calling publish() as part of that work, specify the transaction related
         to the original request.  This will be passed into the callback so you
