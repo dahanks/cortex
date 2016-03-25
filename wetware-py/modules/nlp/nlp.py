@@ -153,27 +153,18 @@ class WetwareWorker(Worker):
         # if first answer if yes, conf = 1.0
         #  if second answer is yes, conf = 0.5
         #  if third answer is yes, conf = 0.25
-        reply = {}
-        try:
-            responses = json.loads(frame.body)['responses']
-            if len(responses) == 1:
-                reply['responses'] = "Alright, then.  I'll note that."
-            elif len(responses) == 3:
-                if "OK" in responses:
-                    reply['responses'] = "Alright, then.  I'll note that."
-                elif responses[0]:
-                    reply['responses'] = "Yes, most certainly."
-                elif responses[1]:
-                    reply['responses'] = "I think so, but I can't be sure."
-                elif responses[2]:
-                    reply['responses'] = "I suppose it's possible, but I doubt it."
-                else:
-                    reply['responses'] = "No, I don't believe so."
+        responses = Responses(frame)
+        if len(responses) == 3:
+            if responses[0]:
+                reply = Statements("Yes, most certainly.")
+            elif responses[1]:
+                reply = Statements("I think so, but I can't be sure.")
+            elif responses[2]:
+                reply = Statements("I suppose it's possible, but I doubt it.")
             else:
-                reply['responses'] = "I'm terribly sorry.  I'm not sure how to answer that."
-        except KeyError, ValueError:
-            reply['responses'] = "Hmm, apologies...I've...lost my train of thought..."
-            logging.exception("Caught Exception:")
+                reply = Statements("No, I don't believe so.")
+        else:
+            reply = Statements("I'm terribly sorry.  I'm not sure how to answer that.")
         self.reply(reply, transaction)
 
     def define_default_args(self):
