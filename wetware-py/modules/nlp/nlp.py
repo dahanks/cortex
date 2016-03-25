@@ -129,33 +129,27 @@ class WetwareWorker(Worker):
         self.reply(reply, transaction)
 
     def interpret_audrey_is(self, frame, context, transaction):
-        replies = Statements()
         responses = Responses(frame)
         if responses[0]:
-            replies.add_response("Yes, I do believe so.")
+            self.reply(Statements("Yes, I do believe so."), transaction)
         else:
-            replies.add_response("No, I don't believe that's true.")
-        self.reply(replies, transaction)
+            self.reply(Statements("No, I don't believe that's true."), transaction)
 
     def interpret_audrey_where(self, frame, context, transaction):
-        replies = Statements()
         responses = Responses(frame)
         location = responses[0]
         if location:
-            replies.add_response("Why it's right at {0}.".format(location))
+            self.reply(Statements("Why it's right at {0}.".format(location)), transaction)
         else:
-            replies.add_response("You know, I don't know where {0} is!".format(context['subj']))
-        self.reply(replies, transaction)
+            self.reply(Statements("You know, I don't know where {0} is!".format(context['subj'])), transaction)
 
     def interpret_audrey_what_is_the(self, frame, context, transaction):
-        replies = Statements()
         responses = Responses(frame)
         value = responses[0]
         if value:
-            replies.add_response("It appears to be {0}.".format(value))
+            self.reply(Statements("It appears to be {0}.".format(value)), transaction)
         else:
-            replies.add_response("You know, I'm just not sure.")
-        self.reply(replies, transaction)
+            self.reply(Statements("You know, I'm just not sure."), transaction)
 
     def interpret_does_response(self, frame, context, transaction):
         #interpret response
@@ -211,14 +205,10 @@ class WetwareWorker(Worker):
         message = json.loads(frame.body)
         ############## End header ##############
 
-        if frame.headers['destination'].startswith('/queue/temp'):
-            for key in ['responses']:
-                if key not in message:
-                    raise FrameException("Message has no {0} field".format(key))
-        else :
-            for key in ['statements']:
-                if key not in message:
-                    raise FrameException("Message has no {0} field".format(key))
+        for key in ['statements']:
+            if key not in message:
+                logging.debug(message)
+                raise FrameException("Message has no {0} field".format(key))
 
 def main():
     logging.basicConfig(level=logging.DEBUG)
