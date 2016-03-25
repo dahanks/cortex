@@ -48,10 +48,10 @@ class WetwareWorker(Worker):
                 statements = self.parse_question_what_is_the(words)
                 self.publish(statements, callback=self.interpret_audrey_what_is_the, transaction=transaction)
             else:
-                self.reply({'responses': "I'm terribly sorry, but I don't understand the question."}, transaction)
+                self.reply(Statements("I'm terribly sorry, but I don't understand the question."), transaction)
         except:
             logging.exception("Caught Exception:")
-            self.reply({'responses': "I'm terribly sorry, but I don't understand the question."}, transaction)
+            self.reply(Statements("I'm terribly sorry, but I don't understand the question."), transaction)
 
     def parse_question_does(self, words):
         does = words[0] #will disregard this
@@ -95,7 +95,7 @@ class WetwareWorker(Worker):
 
     def parse_indicative_statement(self, statement, transaction):
         words = statement.split(' ')
-        try:
+        if (len(words) == 3):
             subj = words[0].strip()
             pred = words[1].strip()
             obj = words[2].strip()
@@ -110,9 +110,8 @@ class WetwareWorker(Worker):
                 #otherwise, add nodes and edge (add_edge adds nodes and edge)
                 statements.add_edge(subj, pred, obj)
             self.publish(statements, callback=self.acknowledge_response, transaction=transaction)
-        except:
-            logging.exception("Caught Exception:")
-            self.reply({'responses': "I'm having trouble understanding what it is you want to say..."}, transaction)
+        else:
+            self.reply(Statements("I'm having trouble understanding what it is you want to say..."), transaction)
 
     def acknowledge_response(self, frame, context, transaction):
         responses = Responses(frame)
