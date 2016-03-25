@@ -9,6 +9,7 @@ from wetware.worker import WetwareException
 from wetware.worker import FrameException
 
 from wetware.neuron import Statements
+from wetware.neuron import Responses
 
 class WetwareWorker(Worker):
 
@@ -128,34 +129,33 @@ class WetwareWorker(Worker):
         self.reply(reply, transaction)
 
     def interpret_audrey_is(self, frame, context, transaction):
-        reply = {}
-        responses = json.loads(frame.body)['responses']
+        replies = Statements()
+        responses = Responses(frame)
         if responses[0]:
-            reply['responses'] = "Yes, I do believe so."
+            replies.add_response("Yes, I do believe so.")
         else:
-            reply['responses'] = "No, I don't believe that's true."
-        self.reply(reply, transaction)
+            replies.add_response("No, I don't believe that's true.")
+        self.reply(replies, transaction)
 
     def interpret_audrey_where(self, frame, context, transaction):
-        reply = {}
-        responses = json.loads(frame.body)['responses']
+        replies = Statements()
+        responses = Responses(frame)
         location = responses[0]
-        #TODO: this empty list parsing needs to change
-        if location and location != "[]":
-            reply['responses'] = "Why it's right at {0}.".format(location)
+        if location:
+            replies.add_response("Why it's right at {0}.".format(location))
         else:
-            reply['responses'] = "You know, I don't know where {0} is!".format(context['subj'])
-        self.reply(reply, transaction)
+            replies.add_response("You know, I don't know where {0} is!".format(context['subj']))
+        self.reply(replies, transaction)
 
     def interpret_audrey_what_is_the(self, frame, context, transaction):
-        reply = {}
-        responses = json.loads(frame.body)['responses']
+        replies = Statements()
+        responses = Responses(frame)
         value = responses[0]
         if value:
-            reply['responses'] = "It appears to be {0}.".format(value)
+            replies.add_response("It appears to be {0}.".format(value))
         else:
-            reply['responses'] = "You know, I'm just not sure."
-        self.reply(reply, transaction)
+            replies.add_response("You know, I'm just not sure.")
+        self.reply(replies, transaction)
 
     def interpret_does_response(self, frame, context, transaction):
         #interpret response
