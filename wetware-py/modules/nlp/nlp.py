@@ -38,8 +38,8 @@ class WetwareWorker(Worker):
                 statements = self.parse_question_does(words)
                 self.publish(statements, callback=self.interpret_does_response, transaction=transaction)
             elif words[0] == 'Where':
-                statements = self.parse_question_where(words)
-                self.publish(statements, callback=self.interpret_audrey_where, transaction=transaction)
+                statements, context  = self.parse_question_where(words)
+                self.publish(statements, callback=self.interpret_audrey_where, context=context, transaction=transaction)
             elif words[0] == 'Is':
                 statements = self.parse_question_is(words)
                 self.publish(statements, callback=self.interpret_audrey_is, transaction=transaction)
@@ -89,7 +89,8 @@ class WetwareWorker(Worker):
         subj = words[2].strip()[:-1]
         statements = Statements()
         statements.get_vertex_property(subj, "location")
-        return statements
+        context = {'subj': subj}
+        return statements, context
 
     def parse_indicative_statement(self, statement, transaction):
         words = statement.split(' ')
@@ -112,7 +113,7 @@ class WetwareWorker(Worker):
             logging.exception("Caught Exception:")
             self.reply({'responses': "I'm having trouble understanding what it is you want to say..."}, transaction)
 
-    def acknowledge_response(self, frame, transaction):
+    def acknowledge_response(self, frame, context, transaction):
         #TODO: clean this up
         reply = {'responses': ""}
         try:
@@ -126,7 +127,7 @@ class WetwareWorker(Worker):
             logging.exception("Caught Exception:")
         self.reply(reply, transaction)
 
-    def interpret_audrey_is(self, frame, transaction):
+    def interpret_audrey_is(self, frame, context, transaction):
         reply = {}
         responses = json.loads(frame.body)['responses']
         if responses[0]:
@@ -135,7 +136,7 @@ class WetwareWorker(Worker):
             reply['responses'] = "No, I don't believe that's true."
         self.reply(reply, transaction)
 
-    def interpret_audrey_where(self, frame, transaction):
+    def interpret_audrey_where(self, frame, context, transaction):
         reply = {}
         responses = json.loads(frame.body)['responses']
         location = responses[0]
@@ -143,10 +144,10 @@ class WetwareWorker(Worker):
         if location and location != "[]":
             reply['responses'] = "Why it's right at {0}.".format(location)
         else:
-            reply['responses'] = "You know, I don't know where it is!"
+            reply['responses'] = "You know, I don't know where {0} is!".format(context['subj'])
         self.reply(reply, transaction)
 
-    def interpret_audrey_what_is_the(self, frame, transaction):
+    def interpret_audrey_what_is_the(self, frame, context, transaction):
         reply = {}
         responses = json.loads(frame.body)['responses']
         value = responses[0]
@@ -156,7 +157,7 @@ class WetwareWorker(Worker):
             reply['responses'] = "You know, I'm just not sure."
         self.reply(reply, transaction)
 
-    def interpret_does_response(self, frame, transaction):
+    def interpret_does_response(self, frame, context, transaction):
         #interpret response
         #respond to UI
         # if first answer if yes, conf = 1.0

@@ -115,6 +115,7 @@ class Worker(object):
             # calling handle_reply implies there was a transaction
             #  with a callback and a temp_sub
             callback = self.transactions[transaction]['callback']
+            context = self.transactions[transaction]['context']
             temp_sub = self.transactions[transaction]['temp_sub']
             self.apollo_conn.unsubscribe(temp_sub)
         except (KeyError, ValueError):
@@ -128,13 +129,13 @@ class Worker(object):
             and hasattr(callback, '__call__')
             and callback.__name__ in dir(self)):
             try:
-                callback(frame, transaction)
+                callback(frame, context, transaction)
             except TypeError:
                 raise WetwareException("You implemented a callback with an invalid definition")
         else:
             raise WetwareException("Invalid callback provided: {0}".format(callback))
 
-    def publish(self, message, topic=None, callback=None, transaction=None):
+    def publish(self, message, topic=None, callback=None, context=None, transaction=None):
         """Publish a message to a topic using your Apollo Connection
 
         If no topic is supplied, we'll assume you want to publish output to the
@@ -145,7 +146,10 @@ class Worker(object):
         for when you get the response.  This is required, or else your message
         won't get the appropriate reply-to headers.
 
-        If you had previous received a message requiring a response, and you're
+        If you would like to remember some context for when the callback is
+        invoked, pass a dictionary as the 'context' parameter.
+
+        If you had previously received a message requiring a response and are
         calling publish() as part of that work, specify the transaction related
         to the original request.  This will be passed into the callback so you
         can respond to the appropriate destination.
@@ -154,7 +158,8 @@ class Worker(object):
         cannot be trying to respond to anyone else.
 
         You cannot specify a transaction without a callback--that's basically
-        replying to someone directly.  Use reply() for that.
+        replying to someone and asking us to infer whom it is.  Use reply() for
+        that.
         """
 
         # If you pass a dict, we'll convert it to JSON for you
@@ -195,6 +200,7 @@ class Worker(object):
                                                           {StompSpec.ACK_HEADER:
                                                            StompSpec.ACK_CLIENT_INDIVIDUAL})
                     self.transactions[transaction]['temp_sub'] = temp_sub
+                    self.transactions[transaction]['context'] = context
                     self.apollo_conn.send(topic, message_str,
                                           headers={'reply-to': '/temp-queue/' + transaction})
                 else:
