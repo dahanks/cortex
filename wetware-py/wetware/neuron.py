@@ -8,14 +8,14 @@ import json
    For publishing queries, member functions add statements to 'statements', then
    you publish the Statement object.
 
-   Responses are the same, just intended to have a semantic difference: they are
-   in reply to some other original query made to you.
+   You can pass a string into the constructor to immediately pass in the first
+   statement value.
 """
 class Statements(dict):
-    def __init__(self, *arg, **kwargs):
-        super(Statements, self).__init__(self, *arg, **kwargs)
+    def __init__(self, msg_string=None):
         self['statements'] = []
-        self['responses'] = []
+        if msg_string:
+            self['statements'].append(msg_string)
 
     #Add a vertex and guarantee that it is unique by referring
     # to the "name" property (which will be our vertex index)"
@@ -158,11 +158,6 @@ class Statements(dict):
         output_statement['fxns'].append(addedge_statement)
         return output_statement
 
-    """Add a response to send to someone who already sent you a query.
-    """
-    def add_response(self, message_str):
-        self['responses'].append(str(message_str))
-
 """This may be a little anti-Pythonic, but here it is:
    This is just a Python list that can be created by interpreting the
    response from Neuron.  It does very little, but it feels a bit nicer
@@ -173,7 +168,7 @@ class Statements(dict):
 """
 class Responses(list):
     def __init__(self, frame):
-        if 'responses' in json.loads(frame.body):
-            list.__init__(self, json.loads(frame.body)['responses'])
+        if 'statements' in json.loads(frame.body):
+            list.__init__(self, json.loads(frame.body)['statements'])
         else:
             list.__init__(self)
