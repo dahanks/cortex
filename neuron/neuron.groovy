@@ -167,7 +167,7 @@ public class Neuron {
             def parser = new JsonSlurper();
             def message = parser.parseText(frame.getBody());
             //return the result of each Statement (but not of each function)
-            def reply = ["responses": []];
+            def reply = ["statements": []];
             for (statement in message['statements']) {
                 println statement;
                 def result;
@@ -179,7 +179,7 @@ public class Neuron {
                 } catch (Exception e) {
                     result = "";
                 }
-                reply["responses"].add(result.toString());
+                reply["statements"].add(result.toString());
                 g.tx().commit();
             }
             if (reply_topics.size() > 0) {
