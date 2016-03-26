@@ -12,10 +12,10 @@ By inheriting the Worker base class, you get a handful of neat features.
   * command_async - Run asynchronous linux command
     * Add a filename to a 'log_file' field in the message to log the output to a file
 
-### Abilities You Can Add to Your Worker
+### Optional Abilities You Can Add to Your Worker
 In addition to defining the work your Worker does, Worker allows you to override and add to methods to allow you to:
-* Add a specialized section in the config file for your Worker
 * Add command line arguments for your Worker
+* Specify default values for your config parameters.
 * Add to message verification so you can assert that people aren't sending you garbage messages.
 
 # Neuron-py
