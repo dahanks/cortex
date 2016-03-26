@@ -10,13 +10,13 @@ Use publish() to send a message to a topic or queue.  The following parameters a
 * If you are expecting a response from you rececipient, you can specify a *callback* function to run when you get the response.  More on callbacks below.
 * If you want to remember some context as to what's happening when you get to your callback, add that as *context*.
 
-### Asynchronous calls
-If you received a request for some work, and your worker needs help from something downstream, you can pass in the *transaction* to the publish() call.  You get this variable from the header of the on_message() method.  You should then specify a callback, and in the callback, you'll use the transaction again in the reply() (see below).
-
 ### Callbacks
 Your callback function must abide by the following definition:
 
     def your_callback(frame, context, transaction):
+
+### Asynchronous calls
+If you received a request for some work, and your worker needs help from something downstream, you can pass in the *transaction* to the publish() call.  You get this variable from the header of the on_message() method.  You should then specify a callback, and in the callback, you'll use the transaction again in the reply() (see below).
 
 ### Reply
 In synchronous workers, you're only ever handling one message at a time.  You can use reply() to send a response to whomever is waiting on you.
