@@ -15,9 +15,13 @@ If you received a request for some work, and your worker needs help from somethi
 
 ### Callbacks
 Your callback function must abide by the following definition:
-def your_callback(frame, context, transaction)
+
+    def your_callback(frame, context, transaction):
 
 ### Reply
+In synchronous workers, you're only ever handling one message at a time.  You can use reply() to send a response to whomever is waiting on you.
+
+In asynchronous workers, you can still use reply() in your callback to respond to whomever is waiting on you.  Just pass in *transaction* from the callback definition.
 
 ## Other Builtin Features
 By inheriting the Worker base class, you get a handful of other neat features.
