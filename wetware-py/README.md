@@ -1,27 +1,26 @@
-# ApolloWorker
-An ApolloWorker subscribes to a topic, waiting for messages.  Upon receiving a message, it does some amount of work based on what you define for it to do.  Finally (and optionally), it may publish results to another topic.
+# Worker
+An Wetware Worker subscribes to a topic, waiting for messages.  Upon receiving a message, it does some amount of work based on what you define for it to do.  Finally (and optionally), it may publish results to another topic.
 
 ### Builtin Features
-By inheriting the ApolloWorker base class, you get a handful of neat features.
-* Basic operations over Apollo message (add these to the 'operation' field of your Apollo message):
-  * quit - Terminate your Worker via Apollo
-  * command_sync - Run a synchronous linux command via your Worker (WOW, that's dangerous! We'll make this better)
-  * command_async - Run asynchronous linux command
-    * Add a filename to a 'log_file' field in the message to log the output to a file
+By inheriting the Worker base class, you get a handful of neat features.
 * Publish any output you produce to any topic.  If no topic is specified, the OUTPUT_TOPIC you specify in your config file is used as default.
 * Basic message verification so you don't end up handling malformed messages.
 * Reading in Apollo parameters from a config file (see worker.config as an example).
 * Passing command line arguments to override those config file parameters.
+* Static methods for running system commands:
+  * command_sync - Run a synchronous linux command via your Worker (WOW, that's dangerous! We'll make this better)
+  * command_async - Run asynchronous linux command
+    * Add a filename to a 'log_file' field in the message to log the output to a file
 
 ### Abilities You Can Add to Your Worker
-In addition to defining the work your Worker does, ApolloWorker allows you to override and add to methods to allow you to:
+In addition to defining the work your Worker does, Worker allows you to override and add to methods to allow you to:
 * Add a specialized section in the config file for your Worker
 * Add command line arguments for your Worker
 * Add to message verification so you can assert that people aren't sending you garbage messages.
 
 # HOWTO
 ### Installation
-Easiest way to install ApolloWorker is to clone this repo, then run `pip install apollo_worker`.  (Use virtual environments if you're hygienic!)
+Easiest way to install Worker is to clone this repo, then run `pip install .`.  (Use virtual environments if you're hygienic!)
 
 ### Creating your own Worker subclass
 (This section is copied from the docstring of example_worker.py.  Use that file as a reference for the below instructions.)
