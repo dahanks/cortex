@@ -17,3 +17,12 @@ In addition to defining the work your Worker does, Worker allows you to override
 * Add a specialized section in the config file for your Worker
 * Add command line arguments for your Worker
 * Add to message verification so you can assert that people aren't sending you garbage messages.
+
+# Neuron-py
+This library gives you the ability to communicate with Neuron in your Wetware worker.  There are some lightweight wrappers to encapsulate the API, which you may use or ignore at your will.
+
+### Statements
+Neuron expects all requests as an array under the key 'statements'.  The Statements() constructor will build this for you.  You can also pass Statements(<string>) to construct a quick Statements object to pass into a publish() or reply().
+
+### Responses
+Neuron will return its responses as a list of 'statements' as well.  But if you'd like to quickly convert that responses to a list, just use Responses(frame) in your worker callback.  You can iterate over that list as normal.
