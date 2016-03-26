@@ -1,7 +1,7 @@
 .PHONY: build run
 
 IMAGE=cortex-neuron
-VERSION=1.0.0
+VERSION=$(shell grep version ../wetware-py/setup.py | cut -d "'" -f 2)
 FROM_IMAGE=$(shell grep FROM Dockerfile | cut -d " " -f 2)
 CONTAINER=neuron
 
