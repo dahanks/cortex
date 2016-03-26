@@ -1,10 +1,25 @@
 # Worker
 An Wetware Worker subscribes to a topic, waiting for messages.  Upon receiving a message, it does some amount of work based on what you define for it to do.  Finally (and optionally), it may publish results to another topic.
 
-### Communication API
+## Communication API
 The Worker class supports synchronous and asynchronous communication with other Workers (or elements in Cortex, like Neuron).
 
-### Other Builtin Features
+### Publishing messages
+Use publish() to send a message to a topic or queue.  The following parameters allow you to control what happens next:
+* If you don't specify the *topic*, you will publish the message to whatever topic/queue was specified in the config file.
+* If you are expecting a response from you rececipient, you can specify a *callback* function to run when you get the response.  More on callbacks below.
+* If you want to remember some context as to what's happening when you get to your callback, add that as *context*.
+
+### Asynchronous calls
+If you received a request for some work, and your worker needs help from something downstream, you can pass in the *transaction* to the publish() call.  You get this variable from the header of the on_message() method.  You should then specify a callback, and in the callback, you'll use the transaction again in the reply() (see below).
+
+### Callbacks
+Your callback function must abide by the following definition:
+def your_callback(frame, context, transaction)
+
+### Reply
+
+## Other Builtin Features
 By inheriting the Worker base class, you get a handful of other neat features.
 * Basic message verification so you don't end up handling malformed messages.
 * Reading in Apollo parameters from a config file (see worker.config as an example).
