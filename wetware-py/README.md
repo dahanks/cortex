@@ -1,9 +1,11 @@
 # Worker
 An Wetware Worker subscribes to a topic, waiting for messages.  Upon receiving a message, it does some amount of work based on what you define for it to do.  Finally (and optionally), it may publish results to another topic.
 
-### Builtin Features
-By inheriting the Worker base class, you get a handful of neat features.
-* Publish any output you produce to any topic.  If no topic is specified, the OUTPUT_TOPIC you specify in your config file is used as default.
+### Communication API
+The Worker class supports synchronous and asynchronous communication with other Workers (or elements in Cortex, like Neuron).
+
+### Other Builtin Features
+By inheriting the Worker base class, you get a handful of other neat features.
 * Basic message verification so you don't end up handling malformed messages.
 * Reading in Apollo parameters from a config file (see worker.config as an example).
 * Passing command line arguments to override those config file parameters.
