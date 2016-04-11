@@ -95,23 +95,48 @@ class WetwareWorker(Worker):
 
     def parse_indicative_statement(self, statement, transaction):
         words = statement.split(' ')
-        if (len(words) == 3):
-            subj = words[0].strip()
-            pred = words[1].strip()
-            obj = words[2].strip()
-            #take out the period
-            if '.' in obj:
-                obj = obj[:-1]
-            statements = Statements()
-            if pred == "is":
-                #"is" will become a boolean property on node
-                statements.add_vertex_property(subj, obj, True)
+        try:
+            if words[0] == 'The' and words[2] == 'of' and words[4] == 'is':
+                statements = self.parse_sentence_the_of_is(words)
+                self.publish(statements, callback=self.acknowledge_response, transaction=transaction)
+            elif len(words) == 3:
+                statements = self.parse_sentence_predicate(words)
+                self.publish(statements, callback=self.acknowledge_response, transaction=transaction)
             else:
-                #otherwise, add nodes and edge (add_edge adds nodes and edge)
-                statements.add_edge(subj, pred, obj)
-            self.publish(statements, callback=self.acknowledge_response, transaction=transaction)
-        else:
+                self.reply(Statements("I'm having trouble understanding what it is you want to say..."), transaction)
+        except:
+            logging.exception("Caught Exception:")
             self.reply(Statements("I'm having trouble understanding what it is you want to say..."), transaction)
+
+    def parse_sentence_predicate(self, words):
+        subj = words[0].strip()
+        pred = words[1].strip()
+        obj = words[2].strip()
+        #take out the period
+        if '.' in obj:
+            obj = obj[:-1]
+        statements = Statements()
+        if pred == "is":
+            #"is" will become a boolean property on node
+            statements.add_vertex_property(subj, obj, True)
+        else:
+            #otherwise, add nodes and edge (add_edge adds nodes and edge)
+            statements.add_edge(subj, pred, obj)
+        return statements
+
+    def parse_sentence_the_of_is(self, words):
+        #0 The
+        key = words[1].strip()
+        #2 of
+        subj = words[3].strip()
+        #4 is
+        value = words[5].strip()
+        #take out the period
+        if '.' in value:
+            value = value[:-1]
+        statements = Statements()
+        statements.add_vertex_property(subj, key, value)
+        return statements
 
     def acknowledge_response(self, frame, context, transaction):
         responses = Responses(frame)
