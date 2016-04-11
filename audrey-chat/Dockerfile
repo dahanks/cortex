@@ -1,4 +1,4 @@
-FROM tianon/apache2
+FROM php:apache
 
 COPY . /var/www/html/audrey-chat/
 
