@@ -7,7 +7,7 @@ CONTAINER=nlp
 
 build:
 	docker build -t $(IMAGE) .
-	docker tag -f $(IMAGE):latest $(IMAGE):$(VERSION)
+	docker tag $(IMAGE):latest $(IMAGE):$(VERSION)
 
 run:
 	docker run -d \
