@@ -30,6 +30,7 @@ h1 {
   width: 500px;
   font-size: 20px;
   box-shadow: 10px 10px 5px #888888;
+  overflow: auto;
 }
 #audrey-dialog {
   font-family: cursive;
