@@ -1,7 +1,7 @@
 .PHONY: build run
 
 IMAGE=wetware-nlp
-VERSION=1.0.0
+VERSION=1.0.1
 FROM_IMAGE=$(shell grep FROM Dockerfile | cut -d " " -f 2)
 CONTAINER=nlp
 

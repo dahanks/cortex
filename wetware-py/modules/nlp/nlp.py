@@ -130,7 +130,10 @@ class WetwareWorker(Worker):
         #2 of
         subj = words[3].strip()
         #4 is
-        value = words[5].strip()
+        if '"' in " ".join(words):
+            value = " ".join(words).split('"')[1]
+        else:
+            value = words[5]
         #take out the period
         if '.' in value:
             value = value[:-1]
