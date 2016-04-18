@@ -94,8 +94,8 @@ class WetwareWorker(Worker):
         return statements, context
 
     def parse_indicative_statement(self, statement, transaction):
-        words = statement.split(' ')
         try:
+            words = statement.split(' ')
             if words[0] == 'The' and words[2] == 'of' and words[4] == 'is':
                 statements = self.parse_sentence_the_of_is(words)
                 self.publish(statements, callback=self.acknowledge_response, transaction=transaction)
