@@ -33,8 +33,8 @@ class WetwareWorker(Worker):
                 self.parse_indicative_statement(statement, transaction)
 
     def parse_interrogative_statement(self, statement, transaction):
-        words = statement.split(' ')
         try:
+            words = statement.split(' ')
             if words[0] == 'Does':
                 statements = self.parse_question_does(words)
                 self.publish(statements, callback=self.interpret_does_response, transaction=transaction)
