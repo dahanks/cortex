@@ -26,32 +26,47 @@ class WetwareWorker(Worker):
             self.process_nlp_statement(message, transaction)
 
     def process_nlp_statement(self, message, transaction):
-        for statement in message['statements']:
-            if '?' in statement:
-                self.parse_interrogative_statement(statement, transaction)
-            else:
-                self.parse_indicative_statement(statement, transaction)
+        statements = message['statements']
+        if len(statements) > 1 and transaction:
+            self.reply(Statements("I can't possibly respond to all that at once!"), transaction)
+        else:
+            #We'll either have one statement and a transaction,
+            # or multiple statements without expecting a reply
+            for statement in statements:
+                if '?' in statement:
+                    self.parse_interrogative_statement(statement, transaction)
+                else:
+                    self.parse_indicative_statement(statement, transaction)
 
     def parse_interrogative_statement(self, statement, transaction):
-        words = statement.split(' ')
         try:
+            words = statement.split(' ')
+            statements = None
+            context = None
             if words[0] == 'Does':
                 statements = self.parse_question_does(words)
-                self.publish(statements, callback=self.interpret_does_response, transaction=transaction)
+                callback = self.interpret_does_response
             elif words[0] == 'Where':
-                statements, context  = self.parse_question_where(words)
-                self.publish(statements, callback=self.interpret_audrey_where, context=context, transaction=transaction)
+                statements, context = self.parse_question_where(words)
+                callback = self.interpret_audrey_where
             elif words[0] == 'Is':
                 statements = self.parse_question_is(words)
-                self.publish(statements, callback=self.interpret_audrey_is, transaction=transaction)
+                callback = self.interpret_audrey_is
             elif words[0] == 'What':
                 statements = self.parse_question_what_is_the(words)
-                self.publish(statements, callback=self.interpret_audrey_what_is_the, transaction=transaction)
-            else:
+                callback = self.interpret_audrey_what_is_the
+            elif transaction:
                 self.reply(Statements("I'm terribly sorry, but I don't understand the question."), transaction)
+                return
+
+            if statements and transaction:
+                self.publish(statements, callback=callback, context=context, transaction=transaction)
+            elif statements:
+                self.publish(statements)
         except:
             logging.exception("Caught Exception:")
-            self.reply(Statements("I'm terribly sorry, but I don't understand the question."), transaction)
+            if transaction:
+                self.reply(Statements("I'm terribly sorry, but I don't understand the question."), transaction)
 
     def parse_question_does(self, words):
         does = words[0] #will disregard this
@@ -94,19 +109,25 @@ class WetwareWorker(Worker):
         return statements, context
 
     def parse_indicative_statement(self, statement, transaction):
-        words = statement.split(' ')
         try:
+            words = statement.split(' ')
+            statements = None
             if words[0] == 'The' and words[2] == 'of' and words[4] == 'is':
                 statements = self.parse_sentence_the_of_is(words)
-                self.publish(statements, callback=self.acknowledge_response, transaction=transaction)
             elif len(words) == 3:
                 statements = self.parse_sentence_predicate(words)
-                self.publish(statements, callback=self.acknowledge_response, transaction=transaction)
-            else:
+            elif transaction:
                 self.reply(Statements("I'm having trouble understanding what it is you want to say..."), transaction)
+                return
+
+            if statements and transaction:
+                self.publish(statements, callback=self.acknowledge_response, transaction=transaction)
+            elif statements:
+                self.publish(statements)
         except:
             logging.exception("Caught Exception:")
-            self.reply(Statements("I'm having trouble understanding what it is you want to say..."), transaction)
+            if transaction:
+                self.reply(Statements("I'm having trouble understanding what it is you want to say..."), transaction)
 
     def parse_sentence_predicate(self, words):
         subj = words[0].strip()
