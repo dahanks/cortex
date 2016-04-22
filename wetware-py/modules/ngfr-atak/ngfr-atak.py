@@ -8,21 +8,21 @@ from wetware.neuron import Statements
 
 class WetwareWorker(Worker):
 
-    #TODO: move from incident_names and user_names as indexes to UUIDs
-    #TODO: topic name conversion only replace spaces with dashes; handle more special chars
-    #TODO: users can't leave an incident, only join (who cares)
+    #LONGTODO: move from incident_names and user_names as indexes to UUIDs
+    #LONGTODO: topic name conversion only replace spaces with dashes; handle more special chars
+    #LONGTODO: users can't leave an incident, only join (who cares)
 
     def __init__(self, subclass_section):
         super(WetwareWorker, self).__init__(subclass_section)
         self.open_incidents = self.get_neuron_incidents()
         self.responders = {} #TODO: get these from neuron
-        #TODO: add organizations for org-wide alerts
+        #LONGTODO: add organizations for org-wide alerts
         #TODO: self.find sensors and subscribe to events for all existing incidents
 
     def get_neuron_incidents(self):
         #TODO: ask neuron what all open incidents are
-        #TODO: for each incidnet:
-        #TODO: ask neuron what users are currently responding
+        #TODO: for each incident
+        #TODO:     ask neuron what users are currently responding
         return {}
 
     def on_message(self, frame):
