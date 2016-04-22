@@ -11,12 +11,19 @@ class WetwareWorker(Worker):
 
     def run(self):
         with ApolloConnection(self.args) as self.apollo_conn:
-            incident = {'incident_id': 'My new incident'}
+            #this object is getting overloaded to handle all cases (not minimal set)
+            incident = {'incident_id': 'My new incident',
+                        'user': {
+                            'name': 'David Horres',
+                        }}
             self.publish(incident, topic='/queue/wetware.ngfr.register.new', callback=self.ack)
-            #self.publish(incident, topic='/queue/wetware.ngfr.register.new', callback=self.ack)
+            self.wait_for_response()
+            time.sleep(3)
+            self.publish(incident, topic='/queue/wetware.ngfr.register.join', callback=self.ack)
             self.wait_for_response()
             time.sleep(3)
             self.publish(incident, topic='/queue/wetware.ngfr.register.close', callback=self.ack)
+            self.wait_for_response()
 
     def wait_for_response(self):
         while True:

@@ -8,9 +8,15 @@ from wetware.neuron import Statements
 
 class WetwareWorker(Worker):
 
+    #TODO: move from incident_names and user_names as indexes to UUIDs
+    #TODO: topic name conversion only replace spaces with dashes; handle more special chars
+    #TODO: users can't leave an incident, only join (who cares)
+
     def __init__(self, subclass_section):
         super(WetwareWorker, self).__init__(subclass_section)
         self.open_incidents = self.get_neuron_incidents()
+        self.responders = {} #TODO: get these from neuron
+        #TODO: add organizations for org-wide alerts
         #TODO: self.find sensors and subscribe to events for all existing incidents
 
     def get_neuron_incidents(self):
@@ -36,38 +42,59 @@ class WetwareWorker(Worker):
         #create new incident (as open)
         incident = message['incident_id']
         if incident not in self.open_incidents:
-            self.open_incidents[incident] = {'status': 'open'}
+            self.open_incidents[incident] = {'status': 'open',
+                                             'responders': []}
             #add all incident properties
             for key in message:
                 self.open_incidents[incident][key] = message[key]
+            #create incident topic
+            incident_topic = '/topic/ngfr.incident.' + incident.lower().replace(' ','-')
+            self.open_incidents[incident]['topic'] = incident_topic
             #TODO: save incident to neuron
             #TODO: based on incident GEO, query SOS for sensors
             #TODO: based on incident metadata + cortex, determine what events to set with sensor
             #TODO: set those events/subscribe to a channel for those alerts
             #TODO: upon alert: determine what each party should do and alert them
-            logging.debug("New incident: {0}".format(incident))
-            logging.debug(self.open_incidents[incident])
+            logging.info("New incident: {0}".format(incident))
+            logging.info(self.open_incidents[incident])
             if transaction:
                 self.reply(message)
         elif transaction:
             self.reply({'error':'Incident already exists.'})
 
     def join_new_incident(self, message, transaction):
-        #TODO: reply with topic for invident livedata
-        #TODO: reply with topics for alerts (group and user)
-        pass
+        incident = message['incident_id']
+        if incident in self.open_incidents:
+            #add responder to incident
+            self.open_incidents[incident]['responders'].append(message['user'])
+            #add responder to responders
+            username = message['user']['name']
+            if username not in self.responders:
+                self.responders[username] = message['user']
+                #add user-specific topic for alerts
+                user_topic = '/topic/ngfr.user.' + username.lower().replace(' ','-')
+                self.responders[username]['topic'] = user_topic
+            if transaction:
+                #list of livedata and alert topics
+                topics = {'livedata': [ self.open_incidents[incident]['topic'] ],
+                          'alert': [ self.responders[username]['topic'] ]}
+                self.reply(topics)
+            logging.info("Added user {0} to incident {1}".format(username, incident))
+            logging.info(self.open_incidents[incident])
+        elif transaction:
+            self.reply({'error': 'Incident does not exist'})
 
     def close_incident(self, message, transaction):
         incident = message['incident_id']
         if incident in self.open_incidents:
-            logging.debug("Closing incident: {0}".format(incident))
+            logging.info("Closing incident: {0}".format(incident))
             #unnecessary to set this before deleting, but keeps consistent
             self.open_incidents[incident]['status'] = 'closed'
             del self.open_incidents[incident]
             #TODO: set incident as closed in neuron
             if transaction:
-                self.reply(incident)
-            logging.debug(self.open_incidents)
+                self.reply(message)
+            logging.info(self.open_incidents)
         elif transaction:
             self.reply({'error': 'Incident does not exist'})
 
@@ -91,7 +118,7 @@ class WetwareWorker(Worker):
                     raise FrameException("Message has no {0} field".format(key))
 
 def main():
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
     wetware_worker = WetwareWorker("wetware")
     wetware_worker.run()
 
