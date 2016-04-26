@@ -49,15 +49,17 @@ class WetwareWorker(Worker):
             for key in message:
                 self.open_incidents[incident][key] = message[key]
             #create incident topic
-            incident_topic = '/topic/ngfr.incident.' + incident.lower().replace(' ','-')
-            self.open_incidents[incident]['topic'] = incident_topic
+            alert_topic = '/topic/ngfr.alert.incident.' + incident.lower().replace(' ','-')
+            livedata_topic = '/topic/ngfr.livedata.incident.' + incident.lower().replace(' ','-')
+            self.open_incidents[incident]['alert_topic'] = alert_topic
+            self.open_incidents[incident]['livedata_topic'] = livedata_topic
             #TODO: save incident to neuron
             logging.info("New incident: {0}".format(incident))
             logging.info(self.open_incidents[incident])
             if transaction:
                 self.reply(message)
             #kick-off full incident analysis
-            #TODO: should this happen any time other than upon creation?
+            #TODO?: should this happen any time other than upon creation?
             self.analyze_incident(self.open_incidents[incident])
         elif transaction:
             self.reply({'error':'Incident already exists.'})
@@ -65,12 +67,14 @@ class WetwareWorker(Worker):
     def analyze_incident(self, incident_obj):
         sensors = self.discover_sensors(incident_obj)
         incident_obj['sensors'] = sensors
-        #assuming there are any sensors in the area, figure out which to 
+        #assuming there are any sensors around, figure out which to listen to
         if sensors:
             self.register_incident_alerts(incident_obj)
 
-    def register_incident_alerts(incident_obj):
+    def register_incident_alerts(self, incident_obj):
         #there should be sensors here
+        # for (event in self.determine_incident_events)):
+        #     self.register_incident_event(event)
         #TODO: determine which sensors are important
         #TODO: determine the kind of events that are important
         #TODO: register events for those alerts, subscribe to a channel for them
@@ -103,12 +107,13 @@ class WetwareWorker(Worker):
             if username not in self.responders:
                 self.responders[username] = message['user']
                 #add user-specific topic for alerts
-                user_topic = '/topic/ngfr.user.' + username.lower().replace(' ','-')
-                self.responders[username]['topic'] = user_topic
+                user_topic = '/topic/ngfr.alert.user.' + username.lower().replace(' ','-')
+                self.responders[username]['alert_topic'] = user_topic
             if transaction:
                 #list of livedata and alert topics
-                topics = {'livedata': [ self.open_incidents[incident]['topic'] ],
-                          'alert': [ self.responders[username]['topic'] ]}
+                topics = {'livedata': [ self.open_incidents[incident]['livedata_topic'] ],
+                          'alert': [ self.responders[username]['alert_topic'],
+                                     self.open_incidents[incident]['alert_topic']]}
                 self.reply(topics)
             logging.info("Added user {0} to incident {1}".format(username, incident))
             logging.info(self.open_incidents[incident])
