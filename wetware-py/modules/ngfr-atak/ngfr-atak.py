@@ -21,6 +21,7 @@ class WetwareWorker(Worker):
         super(WetwareWorker, self).__init__(subclass_section)
         self.open_incidents = self.get_neuron_incidents()
         self.responders = {} #TODO: get these from neuron
+        self.event_callbacks = {}
         #LONGTODO: add organizations for org-wide alerts
         #TODO: either rediscover sensors anew, or look up previously discovered info
         #    self.find sensors and subscribe to events for all existing incidents
@@ -37,12 +38,22 @@ class WetwareWorker(Worker):
         message = json.loads(frame.body)
         ############## End header ##############
 
-        if frame.headers['destination'].endswith('new'):
-            self.create_new_incident(message, transaction)
-        elif frame.headers['destination'].endswith('join'):
-            self.join_new_incident(message, transaction)
-        elif frame.headers['destination'].endswith('close'):
-            self.close_incident(message, transaction)
+        #Register incidents
+        #wetware.ngfr.register.{new,join,close}
+        if 'register' in frame.headers['destination']:
+            if frame.headers['destination'].endswith('new'):
+                self.create_new_incident(message, transaction)
+            elif frame.headers['destination'].endswith('join'):
+                self.join_new_incident(message, transaction)
+            elif frame.headers['destination'].endswith('close'):
+                self.close_incident(message, transaction)
+        #Handle sensor events by running the callback
+        #wetware.ngfr.event.<event-name>
+        elif 'event' in frame.headers['destination']:
+            event_id = frame.headers['destination'].split('.')[-1]
+            callback = self.event_callbacks[event_id]['callback']
+            incident = self.event_callbacks[event_id]['incident']
+            callback(incident)
 
     def create_new_incident(self, message, transaction):
         #create new incident (as open)
@@ -75,38 +86,64 @@ class WetwareWorker(Worker):
         #assuming there are any sensors around, figure out which to listen to
         if sensors:
             self.register_sensor_events(incident_obj)
+        #LONGTODO: if this function doesn't result in anything useful, you might
+        #          want to let people know Audrey couldn't figure out how to help
 
     def register_sensor_events(self, incident_obj):
         for sensor in incident_obj['sensors']:
             events = self.analyze_sensor_context(sensor, incident_obj)
             for event in events:
-                self.register_sensor_event(event)
+                self.register_sensor_event(event, incident_obj)
 
-    def register_sensor_event(event):
-        #TODO: register events for those alerts, subscribe to a channel for them
-        pass
+    def register_sensor_event(self, event, incident_obj):
+        #TODO: register event via George's makeshift SES (but for now...)
+        self.publish({'trigger': event['trigger'], 'topic': event['topic']}, topic='/topic/some-sensor.event.register')
+        #TODO: change this if the sensor wants to dictate the event topic
+        self.subscribe(event['topic'])
+        #register the callback function with the incident
+        self.event_callbacks[event['id']] = {
+            'incident': incident_obj,
+            'callback': event['callback']
+        }
 
     def analyze_sensor_context(self, sensor, incident_obj):
-        #TODO: determine the kind of events that are important (if at all)
-        #      for this sensor using knowledge.  supply a callback for each event
-        #TODO: create an anonymous callback that, upon alert,
-        #      determines what each party should do and tells them
-        return []
+
+        def callback(incident_obj):
+            #TODO: determine who should do what based on the context (incident_obj)
+            #      and tell people
+            logging.info("GOT CALLED!")
+            logging.info("incident: {0}".format(incident_obj))
+
+        #TODO: use knowledge to determine the kind of events that are important
+        event_id = sensor['id'] + '-event'
+        events = [
+            {
+                'id': event_id,
+                'sensor': sensor,
+                'trigger': ('gas-level', 'gt', 10),
+                'callback': callback,
+                'topic': '/topic/wetware.ngfr.event.' + event_id
+            },
+        ]
+
+        return events
 
     def discover_sensors(self, incident_obj):
         #TODO: implement OGC SOS query to get sensor info
-        sensors = {
-            'sensor1': {
+        sensors = [
+            {
+                'id': 'sensor1',
                 'lat': 123.123,
                 'lon': 234.234,
                 'type': 'gas'
             },
-            'sensor2': {
+            {
+                'id': 'sensor2',
                 'lat': 123.124,
                 'lon': 234.235,
                 'type': 'carbon-monoxide'
             }
-        }
+        ]
         return sensors
 
     def join_new_incident(self, message, transaction):
@@ -152,6 +189,7 @@ class WetwareWorker(Worker):
         message = json.loads(frame.body)
         ############## End header ##############
 
+        #TODO: update this with register vs. event
         if frame.headers['destination'].endswith('new'):
             for key in ['incident_id']:
                 if key not in message:
