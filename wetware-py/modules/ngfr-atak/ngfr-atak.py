@@ -69,17 +69,24 @@ class WetwareWorker(Worker):
         incident_obj['sensors'] = sensors
         #assuming there are any sensors around, figure out which to listen to
         if sensors:
-            self.register_incident_alerts(incident_obj)
+            self.register_sensor_events(incident_obj)
 
-    def register_incident_alerts(self, incident_obj):
-        #there should be sensors here
-        # for (event in self.determine_incident_events)):
-        #     self.register_incident_event(event)
-        #TODO: determine which sensors are important
-        #TODO: determine the kind of events that are important
+    def register_sensor_events(self, incident_obj):
+        for sensor in incident_obj['sensors']:
+            events = self.analyze_sensor_context(sensor, incident_obj)
+            for event in events:
+                self.register_sensor_event(event)
+
+    def register_sensor_event(event):
         #TODO: register events for those alerts, subscribe to a channel for them
-        #TODO: supply a callback that, upon alert, determine what each party should do and tell them
         pass
+
+    def analyze_sensor_context(self, sensor, incident_obj):
+        #TODO: determine the kind of events that are important (if at all)
+        #      for this sensor using knowledge.  supply a callback for each event
+        #TODO: create an anonymous callback that, upon alert,
+        #      determines what each party should do and tells them
+        return []
 
     def discover_sensors(self, incident_obj):
         #TODO: implement OGC SOS query to get sensor info
