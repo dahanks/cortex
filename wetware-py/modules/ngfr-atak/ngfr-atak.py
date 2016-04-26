@@ -17,7 +17,8 @@ class WetwareWorker(Worker):
         self.open_incidents = self.get_neuron_incidents()
         self.responders = {} #TODO: get these from neuron
         #LONGTODO: add organizations for org-wide alerts
-        #TODO: self.find sensors and subscribe to events for all existing incidents
+        #TODO: either rediscover sensors anew, or look up previously discovered info
+        #    self.find sensors and subscribe to events for all existing incidents
 
     def get_neuron_incidents(self):
         #TODO: ask neuron what all open incidents are
@@ -51,16 +52,46 @@ class WetwareWorker(Worker):
             incident_topic = '/topic/ngfr.incident.' + incident.lower().replace(' ','-')
             self.open_incidents[incident]['topic'] = incident_topic
             #TODO: save incident to neuron
-            #TODO: based on incident GEO, query SOS for sensors
-            #TODO: based on incident metadata + cortex, determine what events to set with sensor
-            #TODO: set those events/subscribe to a channel for those alerts
-            #TODO: upon alert: determine what each party should do and alert them
             logging.info("New incident: {0}".format(incident))
             logging.info(self.open_incidents[incident])
             if transaction:
                 self.reply(message)
+            #kick-off full incident analysis
+            #TODO: should this happen any time other than upon creation?
+            self.analyze_incident(self.open_incidents[incident])
         elif transaction:
             self.reply({'error':'Incident already exists.'})
+
+    def analyze_incident(self, incident_obj):
+        sensors = self.discover_sensors(incident_obj)
+        incident_obj['sensors'] = sensors
+        #assuming there are any sensors in the area, figure out which to 
+        if sensors:
+            self.register_incident_alerts(incident_obj)
+
+    def register_incident_alerts(incident_obj):
+        #there should be sensors here
+        #TODO: determine which sensors are important
+        #TODO: determine the kind of events that are important
+        #TODO: register events for those alerts, subscribe to a channel for them
+        #TODO: supply a callback that, upon alert, determine what each party should do and tell them
+        pass
+
+    def discover_sensors(self, incident_obj):
+        #TODO: implement OGC SOS query to get sensor info
+        sensors = {
+            'sensor1': {
+                'lat': 123.123,
+                'lon': 234.234,
+                'type': 'gas'
+            },
+            'sensor2': {
+                'lat': 123.124,
+                'lon': 234.235,
+                'type': 'carbon-monoxide'
+            }
+        }
+        return sensors
 
     def join_new_incident(self, message, transaction):
         incident = message['incident_id']
