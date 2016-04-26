@@ -11,6 +11,11 @@ class WetwareWorker(Worker):
     #LONGTODO: move from incident_names and user_names as indexes to UUIDs
     #LONGTODO: topic name conversion only replace spaces with dashes; handle more special chars
     #LONGTODO: users can't leave an incident, only join (who cares)
+    #LONGTODO: how do we continuously monitor the situation and update what we
+    #          think is important? periodically? event-driven?
+    #LONGTODO: make sure new instances of this Worker cooperate with old ones
+    #          e.g., will a new worker care about new sensor events that an
+    #          old worker isn't listening to; old workers listening to old events?
 
     def __init__(self, subclass_section):
         super(WetwareWorker, self).__init__(subclass_section)
