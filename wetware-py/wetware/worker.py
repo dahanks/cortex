@@ -242,6 +242,27 @@ class Worker(object):
         else:
             raise WetwareException("Tried to use reply() when there are multiple, asynchronous transactions!")
 
+    def subscribe(self, topic):
+        """Subscribe to an additional queue/topic specified by a string
+
+        Will throw an exception if you are already subscribed to the topic.
+
+        Returns the subscription object to be passed into unsubscribe().  Worker
+        is responsible for keeping track of subscriptions.
+        """
+        return self.apollo_conn.subscribe(topic,
+                                          {StompSpec.ACK_HEADER:
+                                           StompSpec.ACK_CLIENT_INDIVIDUAL})
+
+    def unsubscribe(self, subscription):
+        """Unsubscribes from a topic.
+
+        Must supply the subscription object returned during subscribe().
+
+        TODO: consider extending this to allow specification of topic by string.
+        """
+        self.apollo_conn.unsubscribe(subscription)
+
     def verify_frame(self, frame):
         """Verify a frame (OVERRIDE and SUPER)
 
