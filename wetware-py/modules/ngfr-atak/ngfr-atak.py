@@ -184,6 +184,7 @@ class WetwareWorker(Worker):
                 event = self.event_callbacks[event_id]
                 if event['incident_id'] == incident:
                     logging.info("Unsubscribing from {0}".format(event_id))
+                    #TODO: publish the unsubscribe request to the sensor
                     self.unsubscribe(event['subscription'])
             #TODO: set incident as closed in neuron
             if transaction:
