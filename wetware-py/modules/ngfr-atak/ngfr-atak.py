@@ -63,7 +63,7 @@ class WetwareWorker(Worker):
         incident = message['incident_id']
         if incident not in self.open_incidents:
             self.open_incidents[incident] = {'status': 'open',
-                                             'responders': []}
+                                             'responders': {}}
             #add all incident properties
             for key in message:
                 self.open_incidents[incident][key] = message[key]
@@ -118,7 +118,7 @@ class WetwareWorker(Worker):
                 'alert': "All non-emergency staff evacuate the area."
             }
             self.publish(incident_alert, incident_obj['alert_topic'])
-            for responder in incident_obj['responders']:
+            for responder in incident_obj['responders'].values():
                 if responder['name'] == "David Horres":
                     responder_alert = {
                         'alert': "{0}, please head to {1} to investigate"
@@ -163,10 +163,11 @@ class WetwareWorker(Worker):
     def join_new_incident(self, message, transaction):
         incident = message['incident_id']
         if incident in self.open_incidents:
-            #add responder to incident
-            self.open_incidents[incident]['responders'].append(message['user'])
-            #add responder to responders
             username = message['user']['name']
+            #add responder to incident
+            if username not in self.open_incidents[incident]['responders']:
+                self.open_incidents[incident]['responders'][username] = message['user']
+            #add responder to responders
             if username not in self.responders:
                 self.responders[username] = message['user']
                 #add user-specific topic for alerts

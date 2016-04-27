@@ -21,6 +21,8 @@ class WetwareWorker(Worker):
             time.sleep(3)
             self.publish(incident, topic='/queue/wetware.ngfr.register.join', callback=self.ack)
             self.wait_for_response() #ack
+            # self.publish(incident, topic='/queue/wetware.ngfr.register.join', callback=self.ack)
+            # self.wait_for_response() #join twice to test exception
             time.sleep(1)
             self.wait_for_response() #alert1
             self.wait_for_response() #alert2
@@ -34,7 +36,10 @@ class WetwareWorker(Worker):
             message = json.loads(frame.body)
             if 'alert_topics' in message:
                 for topic in message['alert_topics']:
-                    self.subscribe(topic)
+                    try:
+                        self.subscribe(topic)
+                    except:
+                        logging.info("Already subscribed to {0}".format(topic))
             logging.info("Received message: {0}".format(frame.info()))
             logging.info(frame.body)
             self.on_message(frame)
