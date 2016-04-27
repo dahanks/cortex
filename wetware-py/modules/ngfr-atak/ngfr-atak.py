@@ -199,19 +199,23 @@ class WetwareWorker(Worker):
         message = json.loads(frame.body)
         ############## End header ##############
 
-        #TODO: update this with register vs. event
-        if frame.headers['destination'].endswith('new'):
-            for key in ['incident_id']:
-                if key not in message:
-                    raise FrameException("Message has no {0} field".format(key))
-        elif frame.headers['destination'].endswith('join'):
-            for key in ['user', 'incident_id']:
-                if key not in message:
-                    raise FrameException("Message has no {0} field".format(key))
-        elif frame.headers['destination'].endswith('closed'):
-            for key in ['incident_id']:
-                if key not in message:
-                    raise FrameException("Message has no {0} field".format(key))
+        #TODO: update this (always)
+        if 'register' in frame.headers['destination']:
+            if frame.headers['destination'].endswith('new'):
+                for key in ['incident_id']:
+                    if key not in message:
+                        raise FrameException("Message has no {0} field".format(key))
+            elif frame.headers['destination'].endswith('join'):
+                for key in ['user', 'incident_id']:
+                    if key not in message:
+                        raise FrameException("Message has no {0} field".format(key))
+            elif frame.headers['destination'].endswith('closed'):
+                for key in ['incident_id']:
+                    if key not in message:
+                        raise FrameException("Message has no {0} field".format(key))
+        elif 'event' in frame.headers['destination']:
+            #no strict schema for events yet
+            pass
 
 def main():
     logging.basicConfig(level=logging.INFO)
