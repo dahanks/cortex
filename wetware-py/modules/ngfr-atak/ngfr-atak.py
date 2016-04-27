@@ -119,10 +119,15 @@ class WetwareWorker(Worker):
                 'alert': "All non-emergency staff evacuate the area."
             }
             self.publish(incident_alert, incident_obj['alert_topic'])
-            responder_alert = {
-                'alert': "{0}, please head to {1} to investigate"
-                " high levels of {2}".format('person', 'location', 'event')
-            }
+            for responder in incident_obj['responders']:
+                if responder['name'] == "David Horres":
+                    responder_alert = {
+                        'alert': "{0}, please head to {1} to investigate"
+                        " high levels of {2}".format(responder['name'],
+                                                     message['location'],
+                                                     message['event'])
+                    }
+                    self.publish(responder_alert, topic=responder['alert_topic'])
 
         #TODO: use knowledge to determine the kind of events that are important
         event_id = sensor['id'] + '-event'

@@ -17,15 +17,16 @@ class WetwareWorker(Worker):
                             'name': 'David Horres',
                         }}
             self.publish(incident, topic='/queue/wetware.ngfr.register.new', callback=self.ack)
-            self.wait_for_response()
+            self.wait_for_response() #ack
             time.sleep(3)
             self.publish(incident, topic='/queue/wetware.ngfr.register.join', callback=self.ack)
-            self.wait_for_response()
+            self.wait_for_response() #ack
             time.sleep(1)
-            self.wait_for_response()
+            self.wait_for_response() #alert1
+            self.wait_for_response() #alert2
             time.sleep(5)
             self.publish(incident, topic='/queue/wetware.ngfr.register.close', callback=self.ack)
-            self.wait_for_response()
+            self.wait_for_response() #ack
 
     def wait_for_response(self):
         while True:
