@@ -21,14 +21,21 @@ class WetwareWorker(Worker):
             time.sleep(3)
             self.publish(incident, topic='/queue/wetware.ngfr.register.join', callback=self.ack)
             self.wait_for_response()
-            time.sleep(10)
+            time.sleep(1)
+            self.wait_for_response()
+            time.sleep(5)
             self.publish(incident, topic='/queue/wetware.ngfr.register.close', callback=self.ack)
             self.wait_for_response()
 
     def wait_for_response(self):
         while True:
             frame = self.apollo_conn.receiveFrame()
+            message = json.loads(frame.body)
+            if 'alert_topics' in message:
+                for topic in message['alert_topics']:
+                    self.subscribe(topic)
             logging.info("Received message: {0}".format(frame.info()))
+            logging.info(frame.body)
             self.on_message(frame)
             break
 
@@ -36,7 +43,7 @@ class WetwareWorker(Worker):
         logging.debug(json.loads(frame.body))
 
 def main():
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
     wetware_worker = WetwareWorker("wetware")
     wetware_worker.run()
 

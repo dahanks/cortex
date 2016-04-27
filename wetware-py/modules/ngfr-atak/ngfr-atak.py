@@ -56,7 +56,7 @@ class WetwareWorker(Worker):
             #callback won't be called if incident is over
             # (but the subscription ought to be deleted by closing the incident)
             if incident_id in self.open_incidents:
-                callback(self.open_incidents[incident_id])
+                callback(self.open_incidents[incident_id], message)
 
     def create_new_incident(self, message, transaction):
         #create new incident (as open)
@@ -112,11 +112,17 @@ class WetwareWorker(Worker):
 
     def analyze_sensor_context(self, sensor, incident_obj):
 
-        def callback(incident_obj):
+        def callback(incident_obj, message):
             #TODO: determine who should do what based on the context (incident_obj)
             #      and tell people
-            logging.info("GOT CALLED!")
-            logging.info("incident: {0}".format(incident_obj))
+            incident_alert = {
+                'alert': "All non-emergency staff evacuate the area."
+            }
+            self.publish(incident_alert, incident_obj['alert_topic'])
+            responder_alert = {
+                'alert': "{0}, please head to {1} to investigate"
+                " high levels of {2}".format('person', 'location', 'event')
+            }
 
         #TODO: use knowledge to determine the kind of events that are important
         event_id = sensor['id'] + '-event'
@@ -164,8 +170,8 @@ class WetwareWorker(Worker):
                 self.responders[username]['alert_topic'] = user_topic
             if transaction:
                 #list of livedata and alert topics
-                topics = {'livedata': [ self.open_incidents[incident]['livedata_topic'] ],
-                          'alert': [ self.responders[username]['alert_topic'],
+                topics = {'livedata_topics': [ self.open_incidents[incident]['livedata_topic'] ],
+                          'alert_topics': [ self.responders[username]['alert_topic'],
                                      self.open_incidents[incident]['alert_topic']]}
                 self.reply(topics)
             logging.info("Added user {0} to incident {1}".format(username, incident))
