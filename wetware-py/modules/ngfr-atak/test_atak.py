@@ -21,7 +21,7 @@ class WetwareWorker(Worker):
             time.sleep(3)
             self.publish(incident, topic='/queue/wetware.ngfr.register.join', callback=self.ack)
             self.wait_for_response()
-            time.sleep(3)
+            time.sleep(10)
             self.publish(incident, topic='/queue/wetware.ngfr.register.close', callback=self.ack)
             self.wait_for_response()
 

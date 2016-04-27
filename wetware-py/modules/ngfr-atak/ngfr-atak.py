@@ -52,8 +52,11 @@ class WetwareWorker(Worker):
         elif 'event' in frame.headers['destination']:
             event_id = frame.headers['destination'].split('.')[-1]
             callback = self.event_callbacks[event_id]['callback']
-            incident = self.event_callbacks[event_id]['incident']
-            callback(incident)
+            incident_id = self.event_callbacks[event_id]['incident_id']
+            #callback won't be called if incident is over
+            # (but the subscription ought to be deleted by closing the incident)
+            if incident_id in self.open_incidents:
+                callback(self.open_incidents[incident_id])
 
     def create_new_incident(self, message, transaction):
         #create new incident (as open)
@@ -99,11 +102,12 @@ class WetwareWorker(Worker):
         #TODO: register event via George's makeshift SES (but for now...)
         self.publish({'trigger': event['trigger'], 'topic': event['topic']}, topic='/topic/some-sensor.event.register')
         #TODO: change this if the sensor wants to dictate the event topic
-        self.subscribe(event['topic'])
+        event_sub = self.subscribe(event['topic'])
         #register the callback function with the incident
         self.event_callbacks[event['id']] = {
-            'incident': incident_obj,
-            'callback': event['callback']
+            'incident_id': incident_obj['incident_id'],
+            'callback': event['callback'],
+            'subscription': event_sub
         }
 
     def analyze_sensor_context(self, sensor, incident_obj):
@@ -176,6 +180,11 @@ class WetwareWorker(Worker):
             #unnecessary to set this before deleting, but keeps consistent
             self.open_incidents[incident]['status'] = 'closed'
             del self.open_incidents[incident]
+            for event_id in self.event_callbacks:
+                event = self.event_callbacks[event_id]
+                if event['incident_id'] == incident:
+                    logging.info("Unsubscribing from {0}".format(event_id))
+                    self.unsubscribe(event['subscription'])
             #TODO: set incident as closed in neuron
             if transaction:
                 self.reply(message)
