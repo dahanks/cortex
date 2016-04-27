@@ -114,7 +114,6 @@ class WetwareWorker(Worker):
 
         def callback(incident_obj, message):
             #TODO: determine who should do what based on the context (incident_obj)
-            #      and tell people
             incident_alert = {
                 'alert': "All non-emergency staff evacuate the area."
             }
@@ -225,8 +224,9 @@ class WetwareWorker(Worker):
                     if key not in message:
                         raise FrameException("Message has no {0} field".format(key))
         elif 'event' in frame.headers['destination']:
-            #no strict schema for events yet
-            pass
+            for key in ['event', 'location']:
+                if key not in message:
+                    raise FrameException("Message has no {0} field".format(key))
 
 def main():
     logging.basicConfig(level=logging.INFO)
