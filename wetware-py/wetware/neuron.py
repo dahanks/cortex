@@ -3,6 +3,8 @@
 import logging
 import json
 
+NEURON_DESTINATION = '/queue/neuron.operation'
+
 """This is just a dictionary that automatically has arrays under the keys
    'statements' and 'responses', since that's what the Neuron API dictates.
    For publishing queries, member functions add statements to 'statements', then
@@ -172,3 +174,6 @@ class Responses(list):
             list.__init__(self, json.loads(frame.body)['statements'])
         else:
             list.__init__(self)
+
+class NeuronException(Exception):
+    pass
