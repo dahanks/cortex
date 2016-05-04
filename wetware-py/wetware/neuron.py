@@ -175,6 +175,26 @@ class Responses(list):
         else:
             list.__init__(self)
 
+    def get_vertex_objects(self):
+        """Parses the responses and returns dicts for any properly-formed vertices
+
+        You should only use this if the responses came from a publish using
+        neuron.get_vertex_object.  There's no guarantee what will happen with
+        random response text.
+        """
+        vertices = []
+        for vertex in self:
+            if vertex != "[]":
+                # get rid of the list brackets in the string
+                vertex_str = vertex[1:-1]
+                vertex_obj = {}
+                for prop in vertex_str.split(','):
+                    key = prop.split('[')[1].split('->')[0]
+                    value = prop.split(']')[0].split('->')[1]
+                    vertex_obj[key] = value
+                vertices.append(vertex_obj)
+        return vertices
+
 def add_vertex_object(self, vertex_obj):
     """Take a Python dict and make a vertex in Neuron from it.
 
@@ -191,6 +211,17 @@ def add_vertex_object(self, vertex_obj):
             statements.add_vertex_property(vertex_obj['name'],
                                            key,
                                            vertex_obj[key])
+    return statements
+
+def get_vertex_object(*vertex_names):
+    """Produce a Statements query for the vertices and all of their  properties
+
+    The ultimate response from neuron will be a string, but you can use
+    Response.get_vertex_object(response) to return the dict object.
+    """
+    statements = Statements()
+    for name in vertex_names:
+        statements.gremlin("g.V().has('name','" + str(name) + "').properties()")
     return statements
 
 class NeuronException(Exception):
