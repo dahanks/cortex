@@ -267,23 +267,6 @@ class Worker(object):
         """
         self.apollo_conn.unsubscribe(subscription)
 
-    def add_neuron_vertex(self, vertex_obj):
-        """Take a Python dict and make a vertex in Neuron from it.
-
-        Will generate properties based on key-values in object.  Will not
-        attempt to create any kind of edges.
-        """
-        if 'name' not in vertex_obj:
-            raise NeuronException("Tried to create vertex with no 'name' field!")
-        elif not isinstance(vertex_obj, dict):
-            raise NeuronException("Tried to create a vertex from a non-dict!")
-        statements = Statements()
-        for key in vertex_obj:
-            if key != 'name':
-                statements.add_vertex_property(vertex_obj['name'],
-                                               key,
-                                               vertex_obj[key])
-        self.publish(statements, topic=NEURON_DESTINATION)
     def verify_frame(self, frame):
         """Verify a frame (OVERRIDE and SUPER)
 
