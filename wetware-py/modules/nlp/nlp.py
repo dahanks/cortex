@@ -10,6 +10,7 @@ from wetware.worker import FrameException
 
 from wetware.neuron import Statements
 from wetware.neuron import Responses
+from wetware.neuron import get_vertex_object
 
 class WetwareWorker(Worker):
 
@@ -55,6 +56,9 @@ class WetwareWorker(Worker):
             elif words[0] == 'What':
                 statements = self.parse_question_what_is_the(words)
                 callback = self.interpret_audrey_what_is_the
+            elif words[0] == 'Who':
+                statements = self.parse_question_who_is(words)
+                callback = self.interpret_audrey_who_is
             elif transaction:
                 self.reply(Statements("I'm terribly sorry, but I don't understand the question."), transaction)
                 return
@@ -107,6 +111,11 @@ class WetwareWorker(Worker):
         statements.get_vertex_property(subj, "location")
         context = {'subj': subj}
         return statements, context
+
+    def parse_question_who_is(self, words):
+        #0,1 Who is
+        subj = words[2].strip()[:-1]
+        return get_vertex_object(subj)
 
     def parse_indicative_statement(self, statement, transaction):
         try:
@@ -194,6 +203,29 @@ class WetwareWorker(Worker):
             reply = Statements("It appears to be {0}.".format(value))
         else:
             reply = Statements("You know, I'm just not sure.")
+        self.reply(reply, transaction)
+
+    def interpret_audrey_who_is(self, frame, context, transaction):
+        responses = Responses(frame)
+        value = responses.get_vertex_objects()
+        if value:
+            #we only look at the first because we don't support conjunctive
+            # questions to Audrey chat
+            vertex = value[0]
+            reply_str = "{0} ".format(vertex['name'])
+            for prop in vertex:
+                if prop == 'name':
+                    continue
+                elif vertex[prop] == "true":
+                    reply_str += "is {0}; ".format(prop)
+                elif vertex[prop] == "false":
+                    reply_str += "is not {0}; ".format(prop)
+                else:
+                    reply_str += "has {0} {1}; ".format(vertex[prop], prop)
+            reply_str += "and that's all I know."
+            reply = Statements(reply_str)
+        else:
+           reply = Statements("Well, I've never met him.")
         self.reply(reply, transaction)
 
     def interpret_does_response(self, frame, context, transaction):
