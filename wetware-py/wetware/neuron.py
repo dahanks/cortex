@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+#TODO: create a static string representing the unique vertex indexer ('name')
+#TODO: create a get_vertex query that takes in a filter (wrapper on gremlin)
+#TODO: tenancy!
+
 import logging
 import json
 
@@ -186,11 +190,11 @@ class Responses(list):
         for vertex in self:
             if vertex != "[]":
                 # get rid of the list brackets in the string
-                vertex_str = vertex[1:-1]
+                vertex_str = vertex[2:-2]
                 vertex_obj = {}
                 for prop in vertex_str.split(','):
-                    key = prop.split('[')[1].split('->')[0]
-                    value = prop.split(']')[0].split('->')[1]
+                    key = prop.split(':')[0].lstrip()
+                    value = prop.split(':')[1].split('[')[1].split(']')[0]
                     vertex_obj[key] = value
                 vertices.append(vertex_obj)
         return vertices
@@ -221,7 +225,7 @@ def get_vertex_object(*vertex_names):
     """
     statements = Statements()
     for name in vertex_names:
-        statements.gremlin("g.V().has('name','" + str(name) + "').properties()")
+        statements.gremlin("g.V().has('name','" + str(name) + "').valueMap()")
     return statements
 
 class NeuronException(Exception):
