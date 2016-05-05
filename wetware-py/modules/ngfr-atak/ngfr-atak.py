@@ -6,6 +6,9 @@ import json
 from wetware.worker import Worker
 from wetware.neuron import Statements
 
+from wetware.neuron import NEURON_DESTINATION
+from wetware.neuron import add_vertex_object
+
 class WetwareWorker(Worker):
 
     #LONGTODO: move from incident_names and user_names as indexes to UUIDs
@@ -72,7 +75,11 @@ class WetwareWorker(Worker):
             livedata_topic = '/topic/ngfr.livedata.incident.' + incident.lower().replace(' ','-')
             self.open_incidents[incident]['alert_topic'] = alert_topic
             self.open_incidents[incident]['livedata_topic'] = livedata_topic
-            #TODO: save incident to neuron
+            #need this for Cortex API
+            self.open_incidents[incident]['name'] = "ngfr:atak:incident:{0}".format(
+                incident.replace(' ','_'))
+            #store incident in Cortex
+            self.publish(add_vertex_object(self.open_incidents[incident]), topic=NEURON_DESTINATION)
             logging.info("New incident: {0}".format(incident))
             logging.info(self.open_incidents[incident])
             if transaction:
@@ -188,8 +195,10 @@ class WetwareWorker(Worker):
         incident = message['incident_id']
         if incident in self.open_incidents:
             logging.info("Closing incident: {0}".format(incident))
-            #unnecessary to set this before deleting, but keeps consistent
+            #Setting this before deleting to make it easy to store in Cortex
             self.open_incidents[incident]['status'] = 'closed'
+            #Store now-closed incident in Cortex
+            self.publish(add_vertex_object(self.open_incidents[incident]), topic=NEURON_DESTINATION)
             del self.open_incidents[incident]
             for event_id in self.event_callbacks:
                 event = self.event_callbacks[event_id]
@@ -197,7 +206,6 @@ class WetwareWorker(Worker):
                     logging.info("Unsubscribing from {0}".format(event_id))
                     #TODO: publish the unsubscribe request to the sensor
                     self.unsubscribe(event['subscription'])
-            #TODO: set incident as closed in neuron
             if transaction:
                 self.reply(message)
             logging.info(self.open_incidents)
