@@ -195,7 +195,7 @@ class Responses(list):
                 vertices.append(vertex_obj)
         return vertices
 
-def add_vertex_object(self, vertex_obj):
+def add_vertex_object(vertex_obj):
     """Take a Python dict and make a vertex in Neuron from it.
 
     Will generate properties based on key-values in object.  Will not
