@@ -194,7 +194,7 @@ class Responses(list):
                 vertex_obj = {}
                 for prop in vertex_str.split(','):
                     key = prop.split(':')[0].lstrip()
-                    value = prop.split(':')[1].split('[')[1].split(']')[0]
+                    value = prop.split('[')[1].split(']')[0]
                     vertex_obj[key] = value
                 vertices.append(vertex_obj)
         return vertices
