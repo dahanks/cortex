@@ -48,7 +48,7 @@ class WetwareWorker(Worker):
                     if username not in self.responders:
                         self.responders[username] = responder
             #now re-run analysis for all these open incidents
-            self.analyze_incident(self.open_incidents[incident_id])
+            self.analyze_incident(incident_id)
         logging.info("OPEN INCIDENTS")
         logging.info(self.open_incidents)
         logging.info("RESPONDERS")
@@ -78,99 +78,51 @@ class WetwareWorker(Worker):
             #callback won't be called if incident is over
             # (but the subscription ought to be deleted by closing the incident)
             if incident_id in self.open_incidents:
-                callback(self.open_incidents[incident_id], message)
+                callback(incident_id, message)
 
     def create_new_incident(self, message, transaction):
         #create new incident (as open)
-        incident = message['incident_id']
-        if incident not in self.open_incidents:
-            self.open_incidents[incident] = {'status': 'open',
-                                             'responders': {},
-                                             'type': 'ngfr:atak:incident'}
+        incident_id = message['incident_id']
+        if incident_id not in self.open_incidents:
+            self.open_incidents[incident_id] = {'status': 'open',
+                                                'responders': {},
+                                                'type': 'ngfr:atak:incident'}
             #add all incident properties
             for key in message:
-                self.open_incidents[incident][key] = message[key]
+                self.open_incidents[incident_id][key] = message[key]
             #create incident topic
-            alert_topic = '/topic/ngfr.alert.incident.' + incident.lower().replace(' ','-')
-            livedata_topic = '/topic/ngfr.livedata.incident.' + incident.lower().replace(' ','-')
-            self.open_incidents[incident]['alert_topic'] = alert_topic
-            self.open_incidents[incident]['livedata_topic'] = livedata_topic
+            alert_topic = '/topic/ngfr.alert.incident.' + incident_id.lower().replace(' ','-')
+            livedata_topic = '/topic/ngfr.livedata.incident.' + incident_id.lower().replace(' ','-')
+            self.open_incidents[incident_id]['alert_topic'] = alert_topic
+            self.open_incidents[incident_id]['livedata_topic'] = livedata_topic
             #need this for Cortex API
-            self.open_incidents[incident]['name'] = "ngfr:atak:incident:{0}".format(
-                incident.replace(' ','_'))
+            self.open_incidents[incident_id]['name'] = "ngfr:atak:incident:{0}".format(
+                incident_id.replace(' ','_'))
             #store incident in Cortex
-            self.store_in_cortex(self.open_incidents[incident])
-            logging.info("New incident: {0}".format(incident))
-            logging.info(self.open_incidents[incident])
+            self.store_in_cortex(self.open_incidents[incident_id])
+            logging.info("New incident: {0}".format(incident_id))
+            logging.info(self.open_incidents[incident_id])
             if transaction:
                 self.reply(message)
             #kick-off full incident analysis
-            self.analyze_incident(self.open_incidents[incident])
+            self.analyze_incident(incident_id)
         elif transaction:
             self.reply({'error':'Incident already exists.'})
 
-    def analyze_incident(self, incident_obj):
-        sensors = self.discover_sensors(incident_obj)
-        incident_obj['sensors'] = sensors
-        #assuming there are any sensors around, figure out which to listen to
-        if sensors:
-            self.register_sensor_events(incident_obj)
-        #LONGTODO: if this function doesn't result in anything useful, you might
-        #          want to let people know Audrey couldn't figure out how to help
+    def analyze_incident(self, incident_id):
+        #TODO: ask for sensors using lat-lon indexing and elasticsearch
+        #discover sensors
+        query = "g.V().has('type','sensor').valueMap()"
+        context = {'incident_id': incident_id}
+        self.publish(Neuron.gremlin(query), topic=Neuron.NEURON_DESTINATION, callback=self.handle_sensor_discovery, context=context)
+        #goto: handle_sensor_discovery
 
-    def register_sensor_events(self, incident_obj):
-        for sensor in incident_obj['sensors']:
-            events = self.analyze_sensor_context(sensor, incident_obj)
-            for event in events:
-                self.register_sensor_event(event, incident_obj)
-
-    def register_sensor_event(self, event, incident_obj):
-        #TODO: register event via George's makeshift SES (but for now...)
-        self.publish({'trigger': event['trigger'], 'topic': event['topic']}, topic='/topic/some-sensor.event.register')
-        #TODO: change this if the sensor wants to dictate the event topic
-        #TODO: handle redundant subscriptions that are actually valid for multiple incidents
-        event_sub = self.subscribe(event['topic'])
-        #register the callback function with the incident
-        self.event_callbacks[event['id']] = {
-            'incident_id': incident_obj['incident_id'],
-            'callback': event['callback'],
-            'subscription': event_sub
-        }
-
-    def analyze_sensor_context(self, sensor, incident_obj):
-
-        def callback(incident_obj, message):
-            #TODO: determine who should do what based on the context (incident_obj)
-            incident_alert = {
-                'alert': "All non-emergency staff evacuate the area."
-            }
-            self.publish(incident_alert, incident_obj['alert_topic'])
-            for responder in incident_obj['responders'].values():
-                if responder['name'] == "David Horres":
-                    responder_alert = {
-                        'alert': "{0}, please head to {1} to investigate"
-                        " high levels of {2}".format(responder['name'],
-                                                     message['location'],
-                                                     message['event'])
-                    }
-                    self.publish(responder_alert, topic=responder['alert_topic'])
-
-        #TODO: use knowledge to determine the kind of events that are important
-        event_id = sensor['name'] + '-event'
-        events = [
-            {
-                'id': event_id,
-                'sensor': sensor,
-                'trigger': ('gas-level', 'gt', 10),
-                'callback': callback,
-                'topic': '/topic/wetware.ngfr.event.' + event_id
-            },
-        ]
-
-        return events
-
-    def discover_sensors(self, incident_obj):
-        #TODO: implement OGC SOS query to get sensor info
+    def handle_sensor_discovery(self, frame, context, transaction):
+        responses = Neuron.Responses(frame)
+        sensors = responses.get_vertex_objects()
+        incident_id = context['incident_id']
+        logging.info("HERE ARE THE SENSORS FROM CORTEX")
+        logging.info(sensors)
         sensors = [
             {
                 'name': 'sensor1',
@@ -187,11 +139,73 @@ class WetwareWorker(Worker):
                 'sensor_type': 'carbon-monoxide'
             }
         ]
-        return sensors
+        if incident_id in self.open_incidents:
+            self.open_incidents[incident_id]['sensors'] = sensors
+            #assuming there are any sensors around, figure out which to listen to
+            if sensors:
+                self.register_sensor_events(incident_id)
+            #LONGTODO: if this function doesn't result in anything useful, you might
+            #          want to let people know Audrey couldn't figure out how to help
+        else:
+            logging.info("Finished analyzing an incident that has already closed.")
+
+    def register_sensor_events(self, incident_id):
+        if incident_id in self.open_incidents:
+            for sensor in self.open_incidents[incident_id]['sensors']:
+                events = self.analyze_sensor_context(sensor, incident_id)
+                for event in events:
+                    self.register_sensor_event(event, incident_id)
+
+    def register_sensor_event(self, event, incident_id):
+        #TODO: register event via George's makeshift SES (but for now...)
+        self.publish({'trigger': event['trigger'], 'topic': event['topic']}, topic='/topic/some-sensor.event.register')
+        #TODO: change this if the sensor wants to dictate the event topic
+        #TODO: handle redundant subscriptions that are actually valid for multiple incidents
+        event_sub = self.subscribe(event['topic'])
+        #register the callback function with the incident
+        self.event_callbacks[event['id']] = {
+            'incident_id': incident_id,
+            'callback': event['callback'],
+            'subscription': event_sub
+        }
+
+    def analyze_sensor_context(self, sensor, incident_id):
+
+        def callback(incident_id, message):
+            if incident_id in self.open_incidents:
+                incident_obj = self.open_incidents[incident_id]
+                #TODO: determine who should do what based on the context (incident_obj)
+                incident_alert = {
+                    'alert': "All non-emergency staff evacuate the area."
+                }
+                self.publish(incident_alert, incident_obj['alert_topic'])
+                for responder in incident_obj['responders'].values():
+                    if responder['name'] == "David Horres":
+                        responder_alert = {
+                            'alert': "{0}, please head to {1} to investigate"
+                            " high levels of {2}".format(responder['name'],
+                                                         message['location'],
+                                                         message['event'])
+                        }
+                        self.publish(responder_alert, topic=responder['alert_topic'])
+
+        #TODO: use knowledge to determine the kind of events that are important
+        event_id = sensor['name'] + '-event'
+        events = [
+            {
+                'id': event_id,
+                'sensor': sensor,
+                'trigger': ('gas-level', 'gt', 10),
+                'callback': callback,
+                'topic': '/topic/wetware.ngfr.event.' + event_id
+            },
+        ]
+
+        return events
 
     def join_new_incident(self, message, transaction):
-        incident = message['incident_id']
-        if incident in self.open_incidents:
+        incident_id = message['incident_id']
+        if incident_id in self.open_incidents:
             username = message['user']['name']
             #add responder to responders
             if username not in self.responders:
@@ -200,31 +214,31 @@ class WetwareWorker(Worker):
                 user_topic = '/topic/ngfr.alert.user.' + username.lower().replace(' ','-')
                 self.responders[username]['alert_topic'] = user_topic
             #add responder to incident
-            if username not in self.open_incidents[incident]['responders']:
-                self.open_incidents[incident]['responders'][username] = self.responders[username]
+            if username not in self.open_incidents[incident_id]['responders']:
+                self.open_incidents[incident_id]['responders'][username] = self.responders[username]
             if transaction:
                 #list of livedata and alert topics
-                topics = {'livedata_topics': [ self.open_incidents[incident]['livedata_topic'] ],
+                topics = {'livedata_topics': [ self.open_incidents[incident_id]['livedata_topic'] ],
                           'alert_topics': [ self.responders[username]['alert_topic'],
-                                     self.open_incidents[incident]['alert_topic']]}
+                                            self.open_incidents[incident_id]['alert_topic']]}
                 self.reply(topics)
-            logging.info("Added user {0} to incident {1}".format(username, incident))
-            logging.info(self.open_incidents[incident])
+            logging.info("Added user {0} to incident {1}".format(username, incident_id))
+            logging.info(self.open_incidents[incident_id])
         elif transaction:
             self.reply({'error': 'Incident does not exist'})
 
     def close_incident(self, message, transaction):
-        incident = message['incident_id']
-        if incident in self.open_incidents:
-            logging.info("Closing incident: {0}".format(incident))
+        incident_id = message['incident_id']
+        if incident_id in self.open_incidents:
+            logging.info("Closing incident: {0}".format(incident_id))
             #Setting this before deleting to make it easy to store in Cortex
-            self.open_incidents[incident]['status'] = 'closed'
+            self.open_incidents[incident_id]['status'] = 'closed'
             #Store now-closed incident in Cortex
-            self.store_in_cortex(self.open_incidents[incident])
-            del self.open_incidents[incident]
+            self.store_in_cortex(self.open_incidents[incident_id])
+            del self.open_incidents[incident_id]
             for event_id in self.event_callbacks:
                 event = self.event_callbacks[event_id]
-                if event['incident_id'] == incident:
+                if event['incident_id'] == incident_id:
                     logging.info("Unsubscribing from {0}".format(event_id))
                     #TODO: publish the unsubscribe request to the sensor
                     self.unsubscribe(event['subscription'])
