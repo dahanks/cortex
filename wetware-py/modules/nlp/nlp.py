@@ -90,9 +90,8 @@ class WetwareWorker(Worker):
         is_word = words[0] #will disregard this
         subj = words[1].strip()
         key = words[2].strip()[:-1]
-        gremlin = 'g.V().has("name","' + subj + '").values("' + key + '")'
         statements = Statements()
-        statements.gremlin(gremlin)
+        statements.get_vertex_property(subj, key)
         return statements
 
     def parse_question_what_is_the(self, words):
@@ -147,8 +146,9 @@ class WetwareWorker(Worker):
             obj = obj[:-1]
         statements = Statements()
         if pred == "is":
-            #"is" will become a boolean property on node
             statements.add_vertex_property(subj, obj, True)
+        elif pred == "isn't":
+            statements.add_vertex_property(subj, obj, False)
         else:
             #otherwise, add nodes and edge (add_edge adds nodes and edge)
             statements.add_edge(subj, pred, obj)
@@ -181,10 +181,12 @@ class WetwareWorker(Worker):
 
     def interpret_audrey_is(self, frame, context, transaction):
         responses = Responses(frame)
-        if responses[0]:
+        if responses[0] == 'true':
             reply = Statements("Yes, I do believe so.")
-        else:
+        elif responses[0] == 'false':
             reply = Statements("No, I don't believe that's true.")
+        else:
+            reply = Statements("Really, I haven't the faintest idea.")
         self.reply(reply, transaction)
 
     def interpret_audrey_where(self, frame, context, transaction):
