@@ -31,6 +31,7 @@ class WetwareWorker(Worker):
         #TODO: ask for responders based on edges
         query = "g.V().has('type','ngfr:atak:incident').has('status', 'open').valueMap()"
         self.publish(Neuron.gremlin(query), topic=Neuron.NEURON_DESTINATION, callback=self.handle_run_setup)
+        #goto: handle_run_setup()
 
     def handle_run_setup(self, frame, context, transaction):
         #received all open incidents
@@ -115,7 +116,7 @@ class WetwareWorker(Worker):
         query = "g.V().has('type','sensor').valueMap()"
         context = {'incident_id': incident_id}
         self.publish(Neuron.gremlin(query), topic=Neuron.NEURON_DESTINATION, callback=self.handle_sensor_discovery, context=context)
-        #goto: handle_sensor_discovery
+        #goto: handle_sensor_discovery()
 
     def handle_sensor_discovery(self, frame, context, transaction):
         responses = Neuron.Responses(frame)
