@@ -40,6 +40,8 @@ class WetwareWorker(Worker):
             incident_id = incident['incident_id']
             if incident_id not in self.open_incidents:
                 self.open_incidents[incident_id] = incident
+                #TODO: populate this dict
+                self.open_incidents[incident_id]['responders'] = {}
             if 'responder' in incident:
                 for responder in incident['responders']:
                     username = responder['name']
