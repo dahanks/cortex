@@ -13,10 +13,6 @@ from stompest.config import StompConfig
 from stompest.sync import Stomp
 from stompest.protocol import StompSpec
 
-from wetware.neuron import Statements
-from wetware.neuron import Responses
-from wetware.neuron import NEURON_DESTINATION
-from wetware.neuron import NeuronException
 # Section of the config file for base class properties
 BASE_SECTION = "main"
 
