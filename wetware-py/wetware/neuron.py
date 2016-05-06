@@ -173,26 +173,43 @@ class Statements(dict):
    Feel free not to use this.
 """
 class Responses(list):
+
     def __init__(self, frame):
         if 'statements' in json.loads(frame.body):
             list.__init__(self, json.loads(frame.body)['statements'])
         else:
             list.__init__(self)
 
-    def get_vertex_objects(self):
-        """Parses the responses and returns dicts for any properly-formed vertices
+    def get_vertex_objects(self, index=0):
+        """Parses the responses and returns dicts for any well-formed vertices.
+
+        This method will only look into one response at a time (defaulting to
+        the first index) because we assume each response could include
+        results for completely unrelated queries.
 
         You should only use this if the responses came from a publish using
-        neuron.get_vertex_object.  There's no guarantee what will happen with
-        random response text.
+        neuron.get_vertex_object() or a Gremlin query that ends with valueMap().
+        There's no guarantee what will happen with random response text or
+        otherwise formatted gremlin query.
         """
         vertices = []
-        for vertex in self:
-            if vertex != "[]":
+        #this vertex list is one Titan/Gremlin encoded string;
+        # definitely not natively interpretable by Python because it has
+        # more colons and brackets. So...
+
+        #Split by the end of a vertex by looking for ]],
+        vertex_list = self[index][1:-1].split(']],')
+        for vertex_str in vertex_list:
+            #take out whitespace
+            vertex_str = vertex_str.lstrip()
+            if vertex_str:
+                #add those closing brackets ']]' back in for uniformity
+                if not vertex_str.endswith(']]'):
+                    vertex_str += ']]'
                 # get rid of the list brackets in the string
-                vertex_str = vertex[2:-2]
+                vertex = vertex_str[1:-1]
                 vertex_obj = {}
-                for prop in vertex_str.split(','):
+                for prop in vertex.split(','):
                     key = prop.split(':')[0].lstrip()
                     value = prop.split('[')[1].split(']')[0]
                     vertex_obj[key] = value
