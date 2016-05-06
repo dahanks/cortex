@@ -19,18 +19,36 @@ class WetwareWorker(Worker):
 
     def __init__(self, subclass_section):
         super(WetwareWorker, self).__init__(subclass_section)
-        self.open_incidents = self.get_neuron_incidents()
-        self.responders = {} #TODO: get these from neuron
+        self.open_incidents = {}
+        self.responders = {}
         self.event_callbacks = {}
         #LONGTODO: add organizations for org-wide alerts
         #TODO: either rediscover sensors anew, or look up previously discovered info
         #    self.find sensors and subscribe to events for all existing incidents
 
-    def get_neuron_incidents(self):
+    def run_setup(self):
         #TODO: ask neuron what all open incidents are
         #TODO: for each incident
         #TODO:     ask neuron what users are currently responding
-        return {}
+        query = "g.V().has('type','ngfr:atak:incident').has('status', 'open').valueMap()"
+        self.publish(Neuron.gremlin(query), topic=Neuron.NEURON_DESTINATION, callback=self.handle_run_setup)
+
+    def handle_run_setup(self, frame, context, transaction):
+        responses = Neuron.Responses(frame)
+        incidents = responses.get_vertex_objects()
+        for incident in incidents:
+            incident_id = incident['incident_id']
+            if incident_id not in self.open_incidents:
+                self.open_incidents[incident_id] = incident
+            if 'responder' in incident:
+                for responder in incident['responders']:
+                    username = responder['name']
+                    if username not in self.responders:
+                        self.responders[username] = responder
+            logging.info("OPEN INCIDENTS")
+            logging.info(self.open_incidents)
+            logging.info("RESPONDERS")
+            logging.info(self.responders)
 
     def on_message(self, frame):
         ### This header must not be modified ###
@@ -63,7 +81,8 @@ class WetwareWorker(Worker):
         incident = message['incident_id']
         if incident not in self.open_incidents:
             self.open_incidents[incident] = {'status': 'open',
-                                             'responders': {}}
+                                             'responders': {},
+                                             'type': 'ngfr:atak:incident'}
             #add all incident properties
             for key in message:
                 self.open_incidents[incident][key] = message[key]
