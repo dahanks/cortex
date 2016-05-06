@@ -63,9 +63,9 @@ class WetwareWorker(Worker):
         #wetware.ngfr.register.{new,join,close}
         if 'register' in frame.headers['destination']:
             if frame.headers['destination'].endswith('new'):
-                self.create_new_incident(message, transaction)
+                self.create_incident(message, transaction)
             elif frame.headers['destination'].endswith('join'):
-                self.join_new_incident(message, transaction)
+                self.join_incident(message, transaction)
             elif frame.headers['destination'].endswith('close'):
                 self.close_incident(message, transaction)
         #Handle sensor events by running the callback
@@ -79,7 +79,7 @@ class WetwareWorker(Worker):
             if incident_id in self.open_incidents:
                 callback(incident_id, message)
 
-    def create_new_incident(self, message, transaction):
+    def create_incident(self, message, transaction):
         #create new incident (as open)
         incident_id = message['incident_id']
         if incident_id not in self.open_incidents:
@@ -212,7 +212,7 @@ class WetwareWorker(Worker):
 
         return events
 
-    def join_new_incident(self, message, transaction):
+    def join_incident(self, message, transaction):
         incident_id = message['incident_id']
         if incident_id in self.open_incidents:
             username = message['user']['name']
