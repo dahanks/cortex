@@ -47,6 +47,8 @@ class WetwareWorker(Worker):
                     username = responder['name']
                     if username not in self.responders:
                         self.responders[username] = responder
+            #now re-run analysis for all these open incidents
+            self.analyze_incident(self.open_incidents[incident_id])
         logging.info("OPEN INCIDENTS")
         logging.info(self.open_incidents)
         logging.info("RESPONDERS")
@@ -103,7 +105,6 @@ class WetwareWorker(Worker):
             if transaction:
                 self.reply(message)
             #kick-off full incident analysis
-            #TODO?: should this happen any time other than upon creation?
             self.analyze_incident(self.open_incidents[incident])
         elif transaction:
             self.reply({'error':'Incident already exists.'})
