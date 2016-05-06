@@ -46,7 +46,7 @@ class WetwareWorker(Worker):
             context = None
             if words[0] == 'Does':
                 statements = self.parse_question_does(words)
-                callback = self.interpret_does_response
+                callback = self.interpret_audrey_does
             elif words[0] == 'Where':
                 statements, context = self.parse_question_where(words)
                 callback = self.interpret_audrey_where
@@ -59,6 +59,9 @@ class WetwareWorker(Worker):
             elif words[0] == 'Who':
                 statements = self.parse_question_who_is(words)
                 callback = self.interpret_audrey_who_is
+            elif len(words) == 3:
+                statements = self.parse_question_generic_edge(words)
+                callback = self.interpret_audrey_generic_edge
             elif transaction:
                 self.reply(Statements("I'm terribly sorry, but I don't understand the question."), transaction)
                 return
@@ -84,6 +87,15 @@ class WetwareWorker(Worker):
         ]
         statements = Statements()
         statements.gremlin(*gremlins)
+        return statements
+
+    def parse_question_generic_edge(self, words):
+        subj = words[0].strip()
+        pred = words[1].strip()
+        obj = words[2].strip()[:-1] #take off the question mark
+        gremlin = 'g.V().has("name","' + subj + '").out("' + pred + '").has("name","' + obj + '")'
+        statements = Statements()
+        statements.gremlin(gremlin)
         return statements
 
     def parse_question_is(self, words):
@@ -233,7 +245,7 @@ class WetwareWorker(Worker):
            reply = Statements("I don't believe we know each other.")
         self.reply(reply, transaction)
 
-    def interpret_does_response(self, frame, context, transaction):
+    def interpret_audrey_does(self, frame, context, transaction):
         #interpret response
         #respond to UI
         # if first answer if yes, conf = 1.0
@@ -252,6 +264,15 @@ class WetwareWorker(Worker):
                 reply = Statements("No, I don't believe so.", "negative")
         else:
             reply = Statements("I'm terribly sorry.  I'm not sure how to answer that.")
+        self.reply(reply, transaction)
+
+    def interpret_audrey_generic_edge(self, frame, context, transaction):
+        #empty brackets is Gremlins empty string toList()
+        responses = Responses(frame)
+        if responses[0] != "[]":
+            reply = Statements("Yes, most certainly.", "positive")
+        else:
+            reply = Statements("No, I don't believe so.", "negative")
         self.reply(reply, transaction)
 
     def define_default_args(self):
