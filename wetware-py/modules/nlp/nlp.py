@@ -225,7 +225,7 @@ class WetwareWorker(Worker):
             reply_str += "and that's all I know."
             reply = Statements(reply_str)
         else:
-           reply = Statements("Well, I've never met him.")
+           reply = Statements("I don't believe we know each other.")
         self.reply(reply, transaction)
 
     def interpret_does_response(self, frame, context, transaction):
