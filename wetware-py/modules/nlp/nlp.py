@@ -193,7 +193,7 @@ class WetwareWorker(Worker):
         responses = Responses(frame)
         location = responses[0]
         if location:
-            reply = Statements("Why it's right at {0}.".format(location))
+            reply = Statements("Why, {0} is right at {1}.".format(context['subj'], location))
         else:
             reply = Statements("You know, I don't know where {0} is!".format(context['subj']))
         self.reply(reply, transaction)
