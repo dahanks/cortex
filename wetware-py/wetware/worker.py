@@ -144,6 +144,9 @@ class Worker(object):
             and callback.__name__ in dir(self)):
             try:
                 callback(frame, context, transaction)
+                #TODO: test this on previous workers
+                if transaction in self.transactions:
+                    del self.transactions[transaction]
             except TypeError:
                 raise WetwareException("You implemented a callback with an invalid definition")
         else:
@@ -242,13 +245,11 @@ class Worker(object):
         """
         if transaction and 'reply-to' in self.transactions[transaction]:
             self.publish(message, self.transactions[transaction]['reply-to'])
-            del self.transactions[transaction]
         elif len(self.transactions) == 1:
             # grab the only transaction, publish to it, and delete it
             trans_id, transaction = self.transactions.items()[0]
             if 'reply-to' in transaction:
                 self.publish(message, transaction['reply-to'])
-                del self.transactions[trans_id]
             else:
                 raise WetwareException("Tried to use reply() when no one was expecting it!")
         elif len(self.transactions) == 0:
