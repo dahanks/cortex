@@ -24,25 +24,27 @@ class Statements(dict):
             for msg in msg_strings:
                 self['statements'].append(msg)
 
-    #Add a vertex and guarantee that it is unique by referring
-    # to the "name" property (which will be our vertex index)"
-    #Can make multiple vertices in the same call.
     def add_vertex(self, *names):
+        """Add a vertex and guarantee that it is unique by referring
+        to the "name" property (which will be our vertex index)"
+        Can make multiple vertices in the same call.
+        """
         statement = {'fxns': [], 'api': 'neuron'}
         for name in names:
             fxn = {'fxn': 'addVertex', 'name': name}
             statement['fxns'].append(fxn)
         self['statements'].append(statement)
 
-    #Add an edge between two vertices and guarantee that it is unique
-    # by making sure that only one edge with the "label" exists between
-    # two vertices with the same "name" property.
-    #Creating an Edge will also create the Vertices, if they don't exist.
-    #This function takes either:
-    #  3 arguments: from_vertex, label, to_vertex
-    # OR
-    #  a list of 3-tuples, each as (from_vertex, label, to_vertex)
     def add_edge(self, *tuples):
+        """Add an edge between two vertices and guarantee that it is unique
+        by making sure that only one edge with the "label" exists between
+        two vertices with the same "name" property.
+        Creating an Edge will also create the Vertices, if they don't exist.
+        This function takes either:
+          3 arguments: from_vertex, label, to_vertex
+         OR
+          a list of 3-tuples, each as (from_vertex, label, to_vertex)
+        """
         statement = {'fxns': [], 'api': 'neuron'}
         #If you only want one edge, give the 3 args (not in a tuple), and
         # we'll handle the rest by making it one proper tuple in a list.
@@ -58,11 +60,12 @@ class Statements(dict):
             statement['fxns'].append(fxn)
         self['statements'].append(statement)
 
-    #Add a property of the specified key and value to the Vertex with the
-    # "name" provided.  If the property already exists, its value will be
-    # overridden.  If the Vertex with "name" does not exist, it will be
-    # created.
     def add_vertex_property(self, name, prop_name, prop_value):
+        """Add a property of the specified key and value to the Vertex with the
+        "name" provided.  If the property already exists, its value will be
+        overridden.  If the Vertex with "name" does not exist, it will be
+        created.
+        """
         statement = {'fxns': [], 'api': 'neuron'}
         fxn = {'fxn': 'addVertexProperty',
                'name': name,
@@ -71,9 +74,10 @@ class Statements(dict):
         statement['fxns'].append(fxn)
         self['statements'].append(statement)
 
-    #Return the value of the property specified on the Vertex that has the
-    # "name" provided.
     def get_vertex_property(self, name, prop_name):
+        """Return the value of the property specified on the Vertex that has the
+        "name" provided.
+        """
         statement = {'fxns': [], 'api': 'neuron'}
         fxn = {'fxn': 'getVertexProperty',
                'name': name,
@@ -81,9 +85,10 @@ class Statements(dict):
         statement['fxns'].append(fxn)
         self['statements'].append(statement)
 
-    #Composes a list Gremlin statements to run, and each will be returned as a
-    # reply.  Multiple statements can be passed as arguments.
     def gremlin(self, *raw_statements):
+        """Composes a list Gremlin statements to run, and each will be returned as a
+        reply.  Multiple statements can be passed as arguments.
+        """
         for raw_statement in raw_statements:
             #no special cases for Gremlin
             statement = self.__compose_raw_statement(raw_statement)
@@ -91,10 +96,12 @@ class Statements(dict):
             self['statements'].append(statement)
 
     #DISCOURAGED USE
-    #Composes a list of Blueprints statements.  Use of this function is discouraged
-    # because it circumvents the true Neuron API by running the statements "raw."
-    # Things like preventing duplication are not enforced.
     def blueprints(self, *raw_statements):
+        """DISCOURAGED USE
+        Composes a list of Blueprints statements.  Use of this function is discouraged
+        because it circumvents the true Neuron API by running the statements "raw."
+        Things like preventing duplication are not enforced.
+        """
         for raw_statement in raw_statements:
             #addEdge is a special case, addVertex is not (and don't expect others to be)
             if 'addEdge' in raw_statement:
@@ -104,9 +111,10 @@ class Statements(dict):
             statement['api'] = 'blueprints'
             self['statements'].append(statement)
 
-    #This private function is used to formulate a Gremlin or Blueprints statement
-    # (with exceptions).  It is not meant to be called from the outside.
     def __compose_raw_statement(self, statement):
+        """This private function is used to formulate a Gremlin or Blueprints statement
+        (with exceptions).  It is not meant to be called from the outside.
+        """
         output_statement = {'fxns': []}
         for input_function in statement.split('.'):
             #these are the Tinker/TitanGraphs or traversal()
@@ -130,10 +138,12 @@ class Statements(dict):
         return output_statement
 
     #DEPRECATED
-    #This private function is used to handle the exception case when a raw
-    # Blueprints string is calling "addEdge()". It is not meant to be called from
-    # the outside.  It is also inferior to the add_edge support above.
     def __compose_addedge_statement(self, raw_statement):
+        """DEPRECATED
+        This private function is used to handle the exception case when a raw
+        Blueprints string is calling "addEdge()". It is not meant to be called from
+        the outside.  It is also inferior to the add_edge support above.
+        """
         #when neuron sees it's blueprints, it will check if fxn is addEdge
         # and handle this different api accordingly
         output_statement = {'fxns': []}
