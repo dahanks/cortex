@@ -22,6 +22,7 @@ class WetwareWorker(Worker):
         self.open_incidents = {}
         self.responders = {}
         self.event_callbacks = {}
+        self.subscription_counts = {}
         #LONGTODO: add organizations for org-wide alerts
 
     def run_setup(self):
@@ -169,8 +170,18 @@ class WetwareWorker(Worker):
         #TODO: register event via George's makeshift SES (but for now...)
         self.publish({'trigger': event['trigger'], 'topic': event['topic']}, topic='/topic/some-sensor.event.register')
         #TODO: change this if the sensor wants to dictate the event topic
-        #TODO: handle redundant subscriptions that are actually valid for multiple incidents
-        event_sub = self.subscribe(event['topic'])
+        event_sub = None
+        #check your list of subscriptions to see if you're already subscribed
+        # via another incident
+        if event['topic'] not in self.subscription_counts:
+            event_sub = self.subscribe(event['topic'])
+            self.subscription_counts[event['topic']] = {
+                'sub': event_sub,
+                'count': 1
+            }
+        else:
+            event_sub = self.subscription_counts[event['topic']]['sub']
+            self.subscription_counts[event['topic']]['count'] += 1
         #register the callback function with the incident
         self.event_callbacks[event['id']] = {
             'incident_id': incident_id,
@@ -251,12 +262,20 @@ class WetwareWorker(Worker):
             #Store now-closed incident in Cortex
             self.store_in_cortex(self.open_incidents[incident_id])
             del self.open_incidents[incident_id]
+            #unsubscribe from events, but only if you're the last one subscribed
             for event_id in self.event_callbacks:
                 event = self.event_callbacks[event_id]
-                if event['incident_id'] == incident_id:
-                    logging.info("Unsubscribing from {0}".format(event_id))
-                    #TODO: publish the unsubscribe request to the sensor
-                    self.unsubscribe(event['subscription'])
+                event_sub = event['subscription']
+                if (event['incident_id'] == incident_id and
+                    event_sub[1] in self.subscription_counts):
+                    if self.subscription_counts[event_sub[1]]['count'] == 1:
+                        logging.info("Unsubscribing from {0}".format(event_id))
+                        #TODO: publish the unsubscribe request to the sensor, itself
+                        self.unsubscribe(event['subscription'])
+                        del self.subscription_counts[event_sub[1]]
+                    else:
+                        logging.info("Decrementing sub count for {0}".format(event_id))
+                        self.subscription_counts[event_sub[1]]['count'] -= 1
             if transaction:
                 self.reply(message)
             logging.info(self.open_incidents)
