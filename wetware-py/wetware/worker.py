@@ -144,7 +144,7 @@ class Worker(object):
             and callback.__name__ in dir(self)):
             try:
                 callback(frame, context, transaction)
-                #TODO: test this on previous workers
+                #delete if we're done the callback, but didn't need to reply
                 if transaction in self.transactions:
                     del self.transactions[transaction]
             except TypeError:
@@ -245,11 +245,15 @@ class Worker(object):
         """
         if transaction and 'reply-to' in self.transactions[transaction]:
             self.publish(message, self.transactions[transaction]['reply-to'])
+            #delete transaction now that we've replied
+            del self.transactions[transaction]
         elif len(self.transactions) == 1:
             # grab the only transaction, publish to it, and delete it
             trans_id, transaction = self.transactions.items()[0]
             if 'reply-to' in transaction:
                 self.publish(message, transaction['reply-to'])
+                #delete transaction now that we've replied
+                del self.transactions[trans_id]
             else:
                 raise WetwareException("Tried to use reply() when no one was expecting it!")
         elif len(self.transactions) == 0:
