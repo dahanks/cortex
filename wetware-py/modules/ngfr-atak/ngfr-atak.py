@@ -27,20 +27,20 @@ class WetwareWorker(Worker):
         #    self.find sensors and subscribe to events for all existing incidents
 
     def run_setup(self):
-        #TODO: ask neuron what all open incidents are
-        #TODO: for each incident
-        #TODO:     ask neuron what users are currently responding
+        #get all open incidents from Cortex
+        #TODO: ask for responders based on edges
         query = "g.V().has('type','ngfr:atak:incident').has('status', 'open').valueMap()"
         self.publish(Neuron.gremlin(query), topic=Neuron.NEURON_DESTINATION, callback=self.handle_run_setup)
 
     def handle_run_setup(self, frame, context, transaction):
+        #received all open incidents
         responses = Neuron.Responses(frame)
         incidents = responses.get_vertex_objects()
         for incident in incidents:
             incident_id = incident['incident_id']
             if incident_id not in self.open_incidents:
                 self.open_incidents[incident_id] = incident
-                #TODO: populate this dict
+                #TODO: handle other repsonses to get responders
                 self.open_incidents[incident_id]['responders'] = {}
             if 'responder' in incident:
                 for responder in incident['responders']:
@@ -127,6 +127,7 @@ class WetwareWorker(Worker):
         #TODO: register event via George's makeshift SES (but for now...)
         self.publish({'trigger': event['trigger'], 'topic': event['topic']}, topic='/topic/some-sensor.event.register')
         #TODO: change this if the sensor wants to dictate the event topic
+        #TODO: handle redundant subscriptions that are actually valid for multiple incidents
         event_sub = self.subscribe(event['topic'])
         #register the callback function with the incident
         self.event_callbacks[event['id']] = {
@@ -189,15 +190,15 @@ class WetwareWorker(Worker):
         incident = message['incident_id']
         if incident in self.open_incidents:
             username = message['user']['name']
-            #add responder to incident
-            if username not in self.open_incidents[incident]['responders']:
-                self.open_incidents[incident]['responders'][username] = message['user']
             #add responder to responders
             if username not in self.responders:
                 self.responders[username] = message['user']
                 #add user-specific topic for alerts
                 user_topic = '/topic/ngfr.alert.user.' + username.lower().replace(' ','-')
                 self.responders[username]['alert_topic'] = user_topic
+            #add responder to incident
+            if username not in self.open_incidents[incident]['responders']:
+                self.open_incidents[incident]['responders'][username] = self.responders[username]
             if transaction:
                 #list of livedata and alert topics
                 topics = {'livedata_topics': [ self.open_incidents[incident]['livedata_topic'] ],
