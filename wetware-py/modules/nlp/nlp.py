@@ -214,17 +214,20 @@ class WetwareWorker(Worker):
             #we only look at the first because we don't support conjunctive
             # questions to Audrey chat
             vertex = value[0]
-            reply_str = "{0} ".format(vertex['name'])
-            for prop in vertex:
-                if prop == 'name':
-                    continue
-                elif vertex[prop] == "true":
-                    reply_str += "is {0}; ".format(prop)
-                elif vertex[prop] == "false":
-                    reply_str += "is not {0}; ".format(prop)
-                else:
-                    reply_str += "has {0} {1}; ".format(vertex[prop], prop)
-            reply_str += "and that's all I know."
+            if len(vertex) == 1:
+                reply_str = "I just know the name {0}, and that's all.".format(vertex['name'])
+            else:
+                reply_str = "{0} ".format(vertex['name'])
+                for prop in vertex:
+                    if prop == 'name':
+                        continue
+                    elif vertex[prop] == "true":
+                        reply_str += "is {0}; ".format(prop)
+                    elif vertex[prop] == "false":
+                        reply_str += "is not {0}; ".format(prop)
+                    else:
+                        reply_str += "has {0} {1}; ".format(vertex[prop], prop)
+                reply_str += "and that's all I know."
             reply = Statements(reply_str)
         else:
            reply = Statements("I don't believe we know each other.")
