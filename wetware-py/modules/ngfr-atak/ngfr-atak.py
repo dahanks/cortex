@@ -45,10 +45,10 @@ class WetwareWorker(Worker):
                     username = responder['name']
                     if username not in self.responders:
                         self.responders[username] = responder
-            logging.info("OPEN INCIDENTS")
-            logging.info(self.open_incidents)
-            logging.info("RESPONDERS")
-            logging.info(self.responders)
+        logging.info("OPEN INCIDENTS")
+        logging.info(self.open_incidents)
+        logging.info("RESPONDERS")
+        logging.info(self.responders)
 
     def on_message(self, frame):
         ### This header must not be modified ###
