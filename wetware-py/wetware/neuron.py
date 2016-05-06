@@ -228,5 +228,15 @@ def get_vertex_object(*vertex_names):
         statements.gremlin("g.V().has('name','" + str(name) + "').valueMap()")
     return statements
 
+def gremlin(*gremlins):
+    """Use wrapper around using Gremlin without having to manipulate Statements
+
+    This way you can pass this function right into a publish() call.
+    """
+    statements = Statements()
+    for gremlin in gremlins:
+        statements.gremlin(gremlin)
+    return statements
+
 class NeuronException(Exception):
     pass
