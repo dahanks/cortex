@@ -225,6 +225,12 @@ class WetwareWorker(Worker):
             #add responder to incident
             if username not in self.open_incidents[incident_id]['responders']:
                 self.open_incidents[incident_id]['responders'][username] = self.responders[username]
+            #store responder and edge in Cortex
+            self.responders[username]['name'] = username
+            self.responders[username]['type'] = 'person'
+            self.store_in_cortex(self.responders[username])
+            edge_tuple = (username, 'responded_to', self.open_incidents[incident_id]['name'])
+            self.store_in_cortex(edge_tuple)
             if transaction:
                 #list of livedata and alert topics
                 topics = {'livedata_topics': [ self.open_incidents[incident_id]['livedata_topic'] ],
@@ -257,9 +263,16 @@ class WetwareWorker(Worker):
         elif transaction:
             self.reply({'error': 'Incident does not exist'})
 
-    def store_in_cortex(self, vertex_obj):
-        #just store the object and don't wait for a response
-        self.publish(Neuron.add_vertex_object(vertex_obj), topic=Neuron.NEURON_DESTINATION)
+    def store_in_cortex(self, vertex_or_edge):
+        """Pass in a dict to store it as a vertex.
+        Or pass in a tuple (from, label, to) to store an edge.
+        """
+        if isinstance(vertex_or_edge, dict):
+            self.publish(Neuron.add_vertex_object(vertex_or_edge), topic=Neuron.NEURON_DESTINATION)
+        elif isinstance(vertex_or_edge, tuple):
+            statements = Neuron.Statements()
+            statements.add_edge(vertex_or_edge)
+            self.publish(statements, topic=Neuron.NEURON_DESTINATION)
 
     def verify_frame(self, frame):
         ### This header must not be modified ###
