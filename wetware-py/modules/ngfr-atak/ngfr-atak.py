@@ -4,10 +4,7 @@ import logging
 import json
 
 from wetware.worker import Worker
-from wetware.neuron import Statements
-
-from wetware.neuron import NEURON_DESTINATION
-from wetware.neuron import add_vertex_object
+import wetware.neuron as Neuron
 
 class WetwareWorker(Worker):
 
@@ -79,7 +76,7 @@ class WetwareWorker(Worker):
             self.open_incidents[incident]['name'] = "ngfr:atak:incident:{0}".format(
                 incident.replace(' ','_'))
             #store incident in Cortex
-            self.publish(add_vertex_object(self.open_incidents[incident]), topic=NEURON_DESTINATION)
+            self.publish(Neuron.add_vertex_object(self.open_incidents[incident]), topic=Neuron.NEURON_DESTINATION)
             logging.info("New incident: {0}".format(incident))
             logging.info(self.open_incidents[incident])
             if transaction:
@@ -198,7 +195,7 @@ class WetwareWorker(Worker):
             #Setting this before deleting to make it easy to store in Cortex
             self.open_incidents[incident]['status'] = 'closed'
             #Store now-closed incident in Cortex
-            self.publish(add_vertex_object(self.open_incidents[incident]), topic=NEURON_DESTINATION)
+            self.publish(Neuron.add_vertex_object(self.open_incidents[incident]), topic=Neuron.NEURON_DESTINATION)
             del self.open_incidents[incident]
             for event_id in self.event_callbacks:
                 event = self.event_callbacks[event_id]
