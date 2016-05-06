@@ -156,7 +156,7 @@ class WetwareWorker(Worker):
                     self.publish(responder_alert, topic=responder['alert_topic'])
 
         #TODO: use knowledge to determine the kind of events that are important
-        event_id = sensor['id'] + '-event'
+        event_id = sensor['name'] + '-event'
         events = [
             {
                 'id': event_id,
@@ -173,16 +173,18 @@ class WetwareWorker(Worker):
         #TODO: implement OGC SOS query to get sensor info
         sensors = [
             {
-                'id': 'sensor1',
+                'name': 'sensor1',
                 'lat': 123.123,
                 'lon': 234.234,
-                'type': 'gas'
+                'type': 'sensor',
+                'sensor_type': 'gas'
             },
             {
-                'id': 'sensor2',
+                'name': 'sensor2',
                 'lat': 123.124,
                 'lon': 234.235,
-                'type': 'carbon-monoxide'
+                'type': 'sensor',
+                'sensor_type': 'carbon-monoxide'
             }
         ]
         return sensors
