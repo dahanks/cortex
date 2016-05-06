@@ -238,11 +238,12 @@ class WetwareWorker(Worker):
         #  if third answer is yes, conf = 0.25
         responses = Responses(frame)
         if len(responses) == 3:
-            if responses[0]:
+            #empty brackets is Gremlins empty string toList()
+            if responses[0] != "[]":
                 reply = Statements("Yes, most certainly.")
-            elif responses[1]:
+            elif responses[1] != "[]":
                 reply = Statements("I think so, but I can't be sure.")
-            elif responses[2]:
+            elif responses[2] != "[]":
                 reply = Statements("I suppose it's possible, but I doubt it.")
             else:
                 reply = Statements("No, I don't believe so.")
