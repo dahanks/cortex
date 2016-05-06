@@ -1,7 +1,13 @@
 #!/usr/bin/env python
 
+#TODO: create a static string representing the unique vertex indexer ('name')
+#TODO: create a get_vertex query that takes in a filter (wrapper on gremlin)
+#TODO: tenancy!
+
 import logging
 import json
+
+NEURON_DESTINATION = '/queue/neuron.operation'
 
 """This is just a dictionary that automatically has arrays under the keys
    'statements' and 'responses', since that's what the Neuron API dictates.
@@ -167,8 +173,87 @@ class Statements(dict):
    Feel free not to use this.
 """
 class Responses(list):
+
     def __init__(self, frame):
         if 'statements' in json.loads(frame.body):
             list.__init__(self, json.loads(frame.body)['statements'])
         else:
             list.__init__(self)
+
+    def get_vertex_objects(self, index=0):
+        """Parses the responses and returns dicts for any well-formed vertices.
+
+        This method will only look into one response at a time (defaulting to
+        the first index) because we assume each response could include
+        results for completely unrelated queries.
+
+        You should only use this if the responses came from a publish using
+        neuron.get_vertex_object() or a Gremlin query that ends with valueMap().
+        There's no guarantee what will happen with random response text or
+        otherwise formatted gremlin query.
+        """
+        vertices = []
+        #this vertex list is one Titan/Gremlin encoded string;
+        # definitely not natively interpretable by Python because it has
+        # more colons and brackets. So...
+
+        #Split by the end of a vertex by looking for ]],
+        vertex_list = self[index][1:-1].split(']],')
+        for vertex_str in vertex_list:
+            #take out whitespace
+            vertex_str = vertex_str.lstrip()
+            if vertex_str:
+                #add those closing brackets ']]' back in for uniformity
+                if not vertex_str.endswith(']]'):
+                    vertex_str += ']]'
+                # get rid of the list brackets in the string
+                vertex = vertex_str[1:-1]
+                vertex_obj = {}
+                for prop in vertex.split(','):
+                    key = prop.split(':')[0].lstrip()
+                    value = prop.split('[')[1].split(']')[0]
+                    vertex_obj[key] = value
+                vertices.append(vertex_obj)
+        return vertices
+
+def add_vertex_object(vertex_obj):
+    """Take a Python dict and make a vertex in Neuron from it.
+
+    Will generate properties based on key-values in object.  Will not
+    attempt to create any kind of edges.
+    """
+    if 'name' not in vertex_obj or 'type' not in vertex_obj:
+        raise NeuronException("Tried to create vertex with no 'name' or 'type' field!")
+    elif not isinstance(vertex_obj, dict):
+        raise NeuronException("Tried to create a vertex from a non-dict!")
+    statements = Statements()
+    for key in vertex_obj:
+        if key != 'name':
+            statements.add_vertex_property(vertex_obj['name'],
+                                           key,
+                                           vertex_obj[key])
+    return statements
+
+def get_vertex_object(*vertex_names):
+    """Produce a Statements query for the vertices and all of their  properties
+
+    The ultimate response from neuron will be a string, but you can use
+    Response.get_vertex_object(response) to return the dict object.
+    """
+    statements = Statements()
+    for name in vertex_names:
+        statements.gremlin("g.V().has('name','" + str(name) + "').valueMap()")
+    return statements
+
+def gremlin(*gremlins):
+    """Use wrapper around using Gremlin without having to manipulate Statements
+
+    This way you can pass this function right into a publish() call.
+    """
+    statements = Statements()
+    for gremlin in gremlins:
+        statements.gremlin(gremlin)
+    return statements
+
+class NeuronException(Exception):
+    pass
