@@ -38,6 +38,7 @@ class Worker(object):
         you'll need to override this function, but keep the first 'with' line.
         """
         with ApolloConnection(self.args) as self.apollo_conn:
+            self.run_setup()
             # subscribe to topic and handle messages;
             #  otherwise, just end and let something override run()
             if "input_topic" in self.args and self.args['input_topic']:
@@ -52,6 +53,15 @@ class Worker(object):
             else:
                 logging.warning("No input topic was specified, so unless this"
                                 " function is overridden, nothing will happen")
+
+    def run_setup(self):
+        """Run any initial publish() calls as part of setting up your Worker.
+
+        Designed to be overridden.  If you need to call publish() in order to
+        get Cortex data, put those publish() calls in here.  You must still
+        handle the results asynchronously.
+        """
+        pass
 
     def on_message(self, frame):
         """Handles overhead of incoming messages, then let's subclass handle the
