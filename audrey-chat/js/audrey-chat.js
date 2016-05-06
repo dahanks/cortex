@@ -28,24 +28,39 @@ function submit_chat(text_input) {
 }
 
 function handle_audrey_response(message) {
+    var audrey_response = message[0];
+    var audrey_reaction = "neutral";
+    if (message.length > 1) {
+        audrey_reaction = message[1];
+    }
     $("#audrey-dialog").empty();
-    $("#audrey-dialog").text(message);
+    $("#audrey-dialog").text(audrey_response);
     var img = document.getElementById("audrey-img");
-    if (message.indexOf("Yes,") > -1) {
+    switch (audrey_reaction) {
+    case "positive":
         img.src = 'img/yes.gif';
         setTimeout(function() {
             img.src = 'img/idle.gif';
         }, 2650);
-    } else if (message.indexOf("No,") > -1) {
+        break;
+    case "negative":
         img.src = 'img/no.gif';
         setTimeout(function() {
             img.src = 'img/idle.gif';
         }, 2800);
-    } else {
+        break;
+    case "neutral":
         img.src = 'img/neutral.gif';
         setTimeout(function() {
             img.src = 'img/idle.gif';
         }, 2400);
+        break;
+    default:
+        img.src = 'img/neutral.gif';
+        setTimeout(function() {
+            img.src = 'img/idle.gif';
+        }, 2400);
+        break;
     }
 }
 

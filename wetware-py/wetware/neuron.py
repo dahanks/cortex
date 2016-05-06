@@ -18,10 +18,11 @@ NEURON_DESTINATION = '/queue/neuron.operation'
    statement value.
 """
 class Statements(dict):
-    def __init__(self, msg_string=None):
+    def __init__(self, *msg_strings):
         self['statements'] = []
-        if msg_string:
-            self['statements'].append(msg_string)
+        if msg_strings:
+            for msg in msg_strings:
+                self['statements'].append(msg)
 
     #Add a vertex and guarantee that it is unique by referring
     # to the "name" property (which will be our vertex index)"

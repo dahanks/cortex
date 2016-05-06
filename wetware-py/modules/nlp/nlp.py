@@ -182,9 +182,9 @@ class WetwareWorker(Worker):
     def interpret_audrey_is(self, frame, context, transaction):
         responses = Responses(frame)
         if responses[0] == 'true':
-            reply = Statements("Yes, I do believe so.")
+            reply = Statements("Yes, I do believe so.", "positive")
         elif responses[0] == 'false':
-            reply = Statements("No, I don't believe that's true.")
+            reply = Statements("No, I don't believe that's true.", "negative")
         else:
             reply = Statements("Really, I haven't the faintest idea.")
         self.reply(reply, transaction)
@@ -193,18 +193,18 @@ class WetwareWorker(Worker):
         responses = Responses(frame)
         location = responses[0]
         if location:
-            reply = Statements("Why, {0} is right at {1}.".format(context['subj'], location))
+            reply = Statements("Why, {0} is right at {1}.".format(context['subj'], location), "positive")
         else:
-            reply = Statements("You know, I don't know where {0} is!".format(context['subj']))
+            reply = Statements("You know, I don't know where {0} is!".format(context['subj']), "negative")
         self.reply(reply, transaction)
 
     def interpret_audrey_what_is_the(self, frame, context, transaction):
         responses = Responses(frame)
         value = responses[0]
         if value:
-            reply = Statements("It appears to be {0}.".format(value))
+            reply = Statements("It appears to be {0}.".format(value), "positive")
         else:
-            reply = Statements("You know, I'm just not sure.")
+            reply = Statements("You know, I'm just not sure.", "negative")
         self.reply(reply, transaction)
 
     def interpret_audrey_who_is(self, frame, context, transaction):
@@ -243,13 +243,13 @@ class WetwareWorker(Worker):
         if len(responses) == 3:
             #empty brackets is Gremlins empty string toList()
             if responses[0] != "[]":
-                reply = Statements("Yes, most certainly.")
+                reply = Statements("Yes, most certainly.", "positive")
             elif responses[1] != "[]":
                 reply = Statements("I think so, but I can't be sure.")
             elif responses[2] != "[]":
                 reply = Statements("I suppose it's possible, but I doubt it.")
             else:
-                reply = Statements("No, I don't believe so.")
+                reply = Statements("No, I don't believe so.", "negative")
         else:
             reply = Statements("I'm terribly sorry.  I'm not sure how to answer that.")
         self.reply(reply, transaction)
