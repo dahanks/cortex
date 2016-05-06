@@ -123,6 +123,22 @@ class WetwareWorker(Worker):
         incident_id = context['incident_id']
         logging.info("HERE ARE THE SENSORS FROM CORTEX")
         logging.info(sensors)
+
+        #if there are no sensors in Cortex, let's just seed it real quick
+        if not sensors:
+            sensors = self.seed_cortex_with_sensors_for_testing()
+
+        if incident_id in self.open_incidents:
+            self.open_incidents[incident_id]['sensors'] = sensors
+            #assuming there are any sensors around, figure out which to listen to
+            if sensors:
+                self.register_sensor_events(incident_id)
+            #LONGTODO: if this function doesn't result in anything useful, you might
+            #          want to let people know Audrey couldn't figure out how to help
+        else:
+            logging.info("Finished analyzing an incident that has already closed.")
+
+    def seed_cortex_with_sensors_for_testing(self):
         sensors = [
             {
                 'name': 'sensor1',
@@ -139,15 +155,9 @@ class WetwareWorker(Worker):
                 'sensor_type': 'carbon-monoxide'
             }
         ]
-        if incident_id in self.open_incidents:
-            self.open_incidents[incident_id]['sensors'] = sensors
-            #assuming there are any sensors around, figure out which to listen to
-            if sensors:
-                self.register_sensor_events(incident_id)
-            #LONGTODO: if this function doesn't result in anything useful, you might
-            #          want to let people know Audrey couldn't figure out how to help
-        else:
-            logging.info("Finished analyzing an incident that has already closed.")
+        for sensor in sensors:
+            self.store_in_cortex(sensor)
+        return sensors
 
     def register_sensor_events(self, incident_id):
         if incident_id in self.open_incidents:
