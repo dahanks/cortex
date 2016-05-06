@@ -84,8 +84,7 @@ class WetwareWorker(Worker):
         incident_id = message['incident_id']
         if incident_id not in self.open_incidents:
             self.open_incidents[incident_id] = {'status': 'open',
-                                                'responders': {},
-                                                'type': 'ngfr:atak:incident'}
+                                                'responders': {}}
             #add all incident properties
             for key in message:
                 self.open_incidents[incident_id][key] = message[key]
@@ -97,6 +96,7 @@ class WetwareWorker(Worker):
             #need this for Cortex API
             self.open_incidents[incident_id]['name'] = "ngfr:atak:incident:{0}".format(
                 incident_id.replace(' ','_'))
+            self.open_incidents[incident_id]['type'] = "ngfr:atak:incident"
             #store incident in Cortex
             self.store_in_cortex(self.open_incidents[incident_id])
             logging.info("New incident: {0}".format(incident_id))
