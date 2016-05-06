@@ -34,6 +34,7 @@ class Worker(object):
         you'll need to override this function, but keep the first 'with' line.
         """
         with ApolloConnection(self.args) as self.apollo_conn:
+            self.run_setup()
             # subscribe to topic and handle messages;
             #  otherwise, just end and let something override run()
             if "input_topic" in self.args and self.args['input_topic']:
@@ -48,6 +49,15 @@ class Worker(object):
             else:
                 logging.warning("No input topic was specified, so unless this"
                                 " function is overridden, nothing will happen")
+
+    def run_setup(self):
+        """Run any initial publish() calls as part of setting up your Worker.
+
+        Designed to be overridden.  If you need to call publish() in order to
+        get Cortex data, put those publish() calls in here.  You must still
+        handle the results asynchronously.
+        """
+        pass
 
     def on_message(self, frame):
         """Handles overhead of incoming messages, then let's subclass handle the
@@ -130,6 +140,9 @@ class Worker(object):
             and callback.__name__ in dir(self)):
             try:
                 callback(frame, context, transaction)
+                #delete if we're done the callback, but didn't need to reply
+                if transaction in self.transactions:
+                    del self.transactions[transaction]
             except TypeError:
                 raise WetwareException("You implemented a callback with an invalid definition")
         else:
@@ -228,12 +241,14 @@ class Worker(object):
         """
         if transaction and 'reply-to' in self.transactions[transaction]:
             self.publish(message, self.transactions[transaction]['reply-to'])
+            #delete transaction now that we've replied
             del self.transactions[transaction]
         elif len(self.transactions) == 1:
             # grab the only transaction, publish to it, and delete it
             trans_id, transaction = self.transactions.items()[0]
             if 'reply-to' in transaction:
                 self.publish(message, transaction['reply-to'])
+                #delete transaction now that we've replied
                 del self.transactions[trans_id]
             else:
                 raise WetwareException("Tried to use reply() when no one was expecting it!")

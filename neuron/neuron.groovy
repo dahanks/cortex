@@ -174,7 +174,7 @@ public class Neuron {
                 try {
                     result = executeStatement(statement);
                     if (statement["api"] == "gremlin"){
-                        result = result.next();
+                        result = result.toList();
                     }
                 } catch (Exception e) {
                     result = "";
