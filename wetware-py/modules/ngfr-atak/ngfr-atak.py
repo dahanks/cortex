@@ -95,7 +95,7 @@ class WetwareWorker(Worker):
             self.open_incidents[incident]['name'] = "ngfr:atak:incident:{0}".format(
                 incident.replace(' ','_'))
             #store incident in Cortex
-            self.publish(Neuron.add_vertex_object(self.open_incidents[incident]), topic=Neuron.NEURON_DESTINATION)
+            self.store_in_cortex(self.open_incidents[incident])
             logging.info("New incident: {0}".format(incident))
             logging.info(self.open_incidents[incident])
             if transaction:
@@ -214,7 +214,7 @@ class WetwareWorker(Worker):
             #Setting this before deleting to make it easy to store in Cortex
             self.open_incidents[incident]['status'] = 'closed'
             #Store now-closed incident in Cortex
-            self.publish(Neuron.add_vertex_object(self.open_incidents[incident]), topic=Neuron.NEURON_DESTINATION)
+            self.store_in_cortex(self.open_incidents[incident])
             del self.open_incidents[incident]
             for event_id in self.event_callbacks:
                 event = self.event_callbacks[event_id]
@@ -227,6 +227,10 @@ class WetwareWorker(Worker):
             logging.info(self.open_incidents)
         elif transaction:
             self.reply({'error': 'Incident does not exist'})
+
+    def store_in_cortex(self, vertex_obj):
+        #just store the object and don't wait for a response
+        self.publish(Neuron.add_vertex_object(vertex_obj), topic=Neuron.NEURON_DESTINATION)
 
     def verify_frame(self, frame):
         ### This header must not be modified ###
