@@ -23,8 +23,6 @@ class WetwareWorker(Worker):
         self.responders = {}
         self.event_callbacks = {}
         #LONGTODO: add organizations for org-wide alerts
-        #TODO: either rediscover sensors anew, or look up previously discovered info
-        #    self.find sensors and subscribe to events for all existing incidents
 
     def run_setup(self):
         #get all open incidents from Cortex
