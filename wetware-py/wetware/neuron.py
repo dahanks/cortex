@@ -205,8 +205,8 @@ def add_vertex_object(vertex_obj):
     Will generate properties based on key-values in object.  Will not
     attempt to create any kind of edges.
     """
-    if 'name' not in vertex_obj:
-        raise NeuronException("Tried to create vertex with no 'name' field!")
+    if 'name' not in vertex_obj or 'type' not in vertex_obj:
+        raise NeuronException("Tried to create vertex with no 'name' or 'type' field!")
     elif not isinstance(vertex_obj, dict):
         raise NeuronException("Tried to create a vertex from a non-dict!")
     statements = Statements()
