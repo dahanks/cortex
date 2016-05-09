@@ -22,36 +22,48 @@ class WetwareWorker(Worker):
         self.open_incidents = {}
         self.responders = {}
         self.event_callbacks = {}
+        self.subscription_counts = {}
         #LONGTODO: add organizations for org-wide alerts
 
     def run_setup(self):
         #get all open incidents from Cortex
-        #TODO: ask for responders based on edges
         query = "g.V().has('type','ngfr:atak:incident').has('status', 'open').valueMap()"
         self.publish(Neuron.gremlin(query), topic=Neuron.NEURON_DESTINATION, callback=self.handle_run_setup)
-        #goto: handle_run_setup()
 
     def handle_run_setup(self, frame, context, transaction):
         #received all open incidents
         responses = Neuron.Responses(frame)
         incidents = responses.get_vertex_objects()
+        responder_queries = []
+        query_context = { 'query_order': []}
         for incident in incidents:
             incident_id = incident['incident_id']
             if incident_id not in self.open_incidents:
                 self.open_incidents[incident_id] = incident
-                #TODO: handle other repsonses to get responders
                 self.open_incidents[incident_id]['responders'] = {}
-            if 'responder' in incident:
-                for responder in incident['responders']:
-                    username = responder['name']
-                    if username not in self.responders:
-                        self.responders[username] = responder
-            #now re-run analysis for all these open incidents
+            #query for responders to this incident
+            query = "g.V().has('name','{0}').in('responded_to').valueMap()".format(incident['name'])
+            responder_queries.append(query)
+            #keep track of the order of the queries
+            query_context['query_order'].append(incident_id)
+        logging.info("Open incidents: {0}".format(self.open_incidents))
+        self.publish(Neuron.gremlin(*responder_queries), topic=Neuron.NEURON_DESTINATION, \
+                     callback=self.handle_responders, context=query_context)
+
+    def handle_responders(self, frame, context, transaction):
+        responses = Neuron.Responses(frame)
+        for index in xrange(len(responses)):
+            responders = responses.get_vertex_objects(index)
+            incident_id = context['query_order'][index]
+            for responder in responders:
+                username = responder['name']
+                if username not in self.open_incidents[incident_id]['responders']:
+                    self.open_incidents[incident_id]['responders'][username] = responder
+                if username not in self.responders:
+                    self.responders[username] = responder
+            #now re-run analysis for all open incidents
             self.analyze_incident(incident_id)
-        logging.info("OPEN INCIDENTS")
-        logging.info(self.open_incidents)
-        logging.info("RESPONDERS")
-        logging.info(self.responders)
+        logging.info("All current responders: {0}".format(self.responders))
 
     def on_message(self, frame):
         ### This header must not be modified ###
@@ -63,9 +75,9 @@ class WetwareWorker(Worker):
         #wetware.ngfr.register.{new,join,close}
         if 'register' in frame.headers['destination']:
             if frame.headers['destination'].endswith('new'):
-                self.create_new_incident(message, transaction)
+                self.create_incident(message, transaction)
             elif frame.headers['destination'].endswith('join'):
-                self.join_new_incident(message, transaction)
+                self.join_incident(message, transaction)
             elif frame.headers['destination'].endswith('close'):
                 self.close_incident(message, transaction)
         #Handle sensor events by running the callback
@@ -79,13 +91,12 @@ class WetwareWorker(Worker):
             if incident_id in self.open_incidents:
                 callback(incident_id, message)
 
-    def create_new_incident(self, message, transaction):
+    def create_incident(self, message, transaction):
         #create new incident (as open)
         incident_id = message['incident_id']
         if incident_id not in self.open_incidents:
             self.open_incidents[incident_id] = {'status': 'open',
-                                                'responders': {},
-                                                'type': 'ngfr:atak:incident'}
+                                                'responders': {}}
             #add all incident properties
             for key in message:
                 self.open_incidents[incident_id][key] = message[key]
@@ -97,6 +108,7 @@ class WetwareWorker(Worker):
             #need this for Cortex API
             self.open_incidents[incident_id]['name'] = "ngfr:atak:incident:{0}".format(
                 incident_id.replace(' ','_'))
+            self.open_incidents[incident_id]['type'] = "ngfr:atak:incident"
             #store incident in Cortex
             self.store_in_cortex(self.open_incidents[incident_id])
             logging.info("New incident: {0}".format(incident_id))
@@ -120,8 +132,7 @@ class WetwareWorker(Worker):
         responses = Neuron.Responses(frame)
         sensors = responses.get_vertex_objects()
         incident_id = context['incident_id']
-        logging.info("HERE ARE THE SENSORS FROM CORTEX")
-        logging.info(sensors)
+        logging.info("Sensors from Cortex: {0}".format(sensors))
 
         #if there are no sensors in Cortex, let's just seed it real quick
         if not sensors:
@@ -169,8 +180,18 @@ class WetwareWorker(Worker):
         #TODO: register event via George's makeshift SES (but for now...)
         self.publish({'trigger': event['trigger'], 'topic': event['topic']}, topic='/topic/some-sensor.event.register')
         #TODO: change this if the sensor wants to dictate the event topic
-        #TODO: handle redundant subscriptions that are actually valid for multiple incidents
-        event_sub = self.subscribe(event['topic'])
+        event_sub = None
+        #check your list of subscriptions to see if you're already subscribed
+        # via another incident
+        if event['topic'] not in self.subscription_counts:
+            event_sub = self.subscribe(event['topic'])
+            self.subscription_counts[event['topic']] = {
+                'sub': event_sub,
+                'count': 1
+            }
+        else:
+            event_sub = self.subscription_counts[event['topic']]['sub']
+            self.subscription_counts[event['topic']]['count'] += 1
         #register the callback function with the incident
         self.event_callbacks[event['id']] = {
             'incident_id': incident_id,
@@ -212,7 +233,7 @@ class WetwareWorker(Worker):
 
         return events
 
-    def join_new_incident(self, message, transaction):
+    def join_incident(self, message, transaction):
         incident_id = message['incident_id']
         if incident_id in self.open_incidents:
             username = message['user']['name']
@@ -225,6 +246,12 @@ class WetwareWorker(Worker):
             #add responder to incident
             if username not in self.open_incidents[incident_id]['responders']:
                 self.open_incidents[incident_id]['responders'][username] = self.responders[username]
+            #store responder and edge in Cortex
+            self.responders[username]['name'] = username
+            self.responders[username]['type'] = 'person'
+            self.store_in_cortex(self.responders[username])
+            edge_tuple = (username, 'responded_to', self.open_incidents[incident_id]['name'])
+            self.store_in_cortex(edge_tuple)
             if transaction:
                 #list of livedata and alert topics
                 topics = {'livedata_topics': [ self.open_incidents[incident_id]['livedata_topic'] ],
@@ -245,21 +272,36 @@ class WetwareWorker(Worker):
             #Store now-closed incident in Cortex
             self.store_in_cortex(self.open_incidents[incident_id])
             del self.open_incidents[incident_id]
+            #unsubscribe from events, but only if you're the last one subscribed
             for event_id in self.event_callbacks:
                 event = self.event_callbacks[event_id]
-                if event['incident_id'] == incident_id:
-                    logging.info("Unsubscribing from {0}".format(event_id))
-                    #TODO: publish the unsubscribe request to the sensor
-                    self.unsubscribe(event['subscription'])
+                event_sub = event['subscription']
+                if (event['incident_id'] == incident_id and
+                    event_sub[1] in self.subscription_counts):
+                    if self.subscription_counts[event_sub[1]]['count'] == 1:
+                        logging.info("Unsubscribing from {0}".format(event_id))
+                        #TODO: publish the unsubscribe request to the sensor, itself
+                        self.unsubscribe(event['subscription'])
+                        del self.subscription_counts[event_sub[1]]
+                    else:
+                        logging.info("Decrementing sub count for {0}".format(event_id))
+                        self.subscription_counts[event_sub[1]]['count'] -= 1
             if transaction:
                 self.reply(message)
             logging.info(self.open_incidents)
         elif transaction:
             self.reply({'error': 'Incident does not exist'})
 
-    def store_in_cortex(self, vertex_obj):
-        #just store the object and don't wait for a response
-        self.publish(Neuron.add_vertex_object(vertex_obj), topic=Neuron.NEURON_DESTINATION)
+    def store_in_cortex(self, vertex_or_edge):
+        """Pass in a dict to store it as a vertex.
+        Or pass in a tuple (from, label, to) to store an edge.
+        """
+        if isinstance(vertex_or_edge, dict):
+            self.publish(Neuron.add_vertex_object(vertex_or_edge), topic=Neuron.NEURON_DESTINATION)
+        elif isinstance(vertex_or_edge, tuple):
+            statements = Neuron.Statements()
+            statements.add_edge(vertex_or_edge)
+            self.publish(statements, topic=Neuron.NEURON_DESTINATION)
 
     def verify_frame(self, frame):
         ### This header must not be modified ###
