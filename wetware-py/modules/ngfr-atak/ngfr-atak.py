@@ -61,6 +61,7 @@ class WetwareWorker(Worker):
                     self.open_incidents[incident_id]['responders'][username] = responder
                 if username not in self.responders:
                     self.responders[username] = responder
+            #now re-run analysis for all open incidents
             self.analyze_incident(incident_id)
         logging.info("All current responders: {0}".format(self.responders))
 
