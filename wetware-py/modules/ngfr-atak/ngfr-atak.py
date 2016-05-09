@@ -27,32 +27,42 @@ class WetwareWorker(Worker):
 
     def run_setup(self):
         #get all open incidents from Cortex
-        #TODO: ask for responders based on edges
         query = "g.V().has('type','ngfr:atak:incident').has('status', 'open').valueMap()"
         self.publish(Neuron.gremlin(query), topic=Neuron.NEURON_DESTINATION, callback=self.handle_run_setup)
-        #goto: handle_run_setup()
 
     def handle_run_setup(self, frame, context, transaction):
         #received all open incidents
         responses = Neuron.Responses(frame)
         incidents = responses.get_vertex_objects()
+        responder_queries = []
+        query_context = { 'query_order': []}
         for incident in incidents:
             incident_id = incident['incident_id']
             if incident_id not in self.open_incidents:
                 self.open_incidents[incident_id] = incident
-                #TODO: handle other repsonses to get responders
                 self.open_incidents[incident_id]['responders'] = {}
-            if 'responder' in incident:
-                for responder in incident['responders']:
-                    username = responder['name']
-                    if username not in self.responders:
-                        self.responders[username] = responder
-            #now re-run analysis for all these open incidents
+            #query for responders to this incident
+            query = "g.V().has('name','{0}').in('responded_to').valueMap()".format(incident['name'])
+            responder_queries.append(query)
+            #keep track of the order of the queries
+            query_context['query_order'].append(incident_id)
+        logging.info("Open incidents: {0}".format(self.open_incidents))
+        self.publish(Neuron.gremlin(*responder_queries), topic=Neuron.NEURON_DESTINATION, \
+                     callback=self.handle_responders, context=query_context)
+
+    def handle_responders(self, frame, context, transaction):
+        responses = Neuron.Responses(frame)
+        for index in xrange(len(responses)):
+            responders = responses.get_vertex_objects(index)
+            incident_id = context['query_order'][index]
+            for responder in responders:
+                username = responder['name']
+                if username not in self.open_incidents[incident_id]['responders']:
+                    self.open_incidents[incident_id]['responders'][username] = responder
+                if username not in self.responders:
+                    self.responders[username] = responder
             self.analyze_incident(incident_id)
-        logging.info("OPEN INCIDENTS")
-        logging.info(self.open_incidents)
-        logging.info("RESPONDERS")
-        logging.info(self.responders)
+        logging.info("All current responders: {0}".format(self.responders))
 
     def on_message(self, frame):
         ### This header must not be modified ###
@@ -121,8 +131,7 @@ class WetwareWorker(Worker):
         responses = Neuron.Responses(frame)
         sensors = responses.get_vertex_objects()
         incident_id = context['incident_id']
-        logging.info("HERE ARE THE SENSORS FROM CORTEX")
-        logging.info(sensors)
+        logging.info("Sensors from Cortex: {0}".format(sensors))
 
         #if there are no sensors in Cortex, let's just seed it real quick
         if not sensors:
