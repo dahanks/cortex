@@ -199,6 +199,27 @@ public class Neuron {
         }
     }
 
+    //Creates property keys for 'name', 'type', and 'location'
+    //Creates composite index on 'name', and 'name'+'type'
+    //Creates mixed index on 'name', 'type', and 'location'
+    public void initializeIndexing() {
+
+        //can't seem to add indexes in a separate transaction from when creating
+        // the property keys, so we'll do it altogether
+        //This only checks to see if 'name' was created, so incomplete setups
+        // will not setup correctly on subsequent runs
+        def mgmt = graph.openManagement();
+        if (! mgmt.containsPropertyKey('name')) {
+            def name = mgmt.makePropertyKey('name').dataType(String.class).cardinality(Cardinality.SINGLE).make();
+            def type = mgmt.makePropertyKey('type').dataType(String.class).cardinality(Cardinality.SINGLE).make();
+            def location = mgmt.makePropertyKey('location').dataType(Geoshape.class).make();
+            mgmt.buildIndex('byNameComposite', Vertex.class).addKey(name).buildCompositeIndex();
+            mgmt.buildIndex('byNameTypeComposite', Vertex.class).addKey(name).addKey(type).unique().buildCompositeIndex();
+            mgmt.buildIndex('byNameTypeGeoMixed', Vertex.class).addKey(name, Mapping.TEXT.asParameter()).addKey(type, Mapping.TEXT.asParameter()).addKey(location).buildMixedIndex("search");
+        }
+        mgmt.commit();
+    }
+
     public void run() {
         while (true) {
             try {
@@ -215,4 +236,5 @@ public class Neuron {
 
 neuron = new Neuron();
 neuron.initialize();
+neuron.initializeIndexing();
 neuron.run();
