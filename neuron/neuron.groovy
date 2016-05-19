@@ -214,7 +214,7 @@ public class Neuron {
             def type = mgmt.makePropertyKey('type').dataType(String.class).cardinality(Cardinality.SINGLE).make();
             def location = mgmt.makePropertyKey('location').dataType(Geoshape.class).make();
             mgmt.buildIndex('byNameComposite', Vertex.class).addKey(name).buildCompositeIndex();
-            mgmt.buildIndex('byNameTypeComposite', Vertex.class).addKey(name).addKey(type).unique().buildCompositeIndex();
+            mgmt.buildIndex('byNameTypeComposite', Vertex.class).addKey(name).addKey(type).buildCompositeIndex();
             mgmt.buildIndex('byNameTypeGeoMixed', Vertex.class).addKey(name, Mapping.TEXT.asParameter()).addKey(type, Mapping.TEXT.asParameter()).addKey(location).buildMixedIndex("search");
         }
         mgmt.commit();
