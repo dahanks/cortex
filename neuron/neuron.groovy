@@ -95,7 +95,10 @@ public class Neuron {
             if (key == "type") {
                 vertex.property(key, value);
             } else {
-                vertex.property(key, "base64:" + value.bytes.encodeBase64().toString());
+                vertex.property(key, value);
+                //Will push Base64 encoding requirement on to clients for chars:
+                // '[',  ']', and ','
+                //vertex.property(key, "base64:" + value.bytes.encodeBase64().toString());
             }
             break;
         case Integer:
