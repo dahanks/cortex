@@ -92,7 +92,7 @@ public class Neuron {
         println "Adding propery: " + key;
         switch(value.getClass()) {
         case String:
-            vertex.property(key, "base64:" + value.bytes.encodeBase64().toString(););
+            vertex.property(key, "base64:" + value.bytes.encodeBase64().toString());
             break;
         case Integer:
             vertex.property(key, value);
