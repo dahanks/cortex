@@ -177,9 +177,10 @@ public class Neuron {
                         result = result.toList();
                     }
                 } catch (Exception e) {
-                    println e.toString();
-                    println e.getMessage();
-                    println e.getStackTrace();
+                    logging.warn("NeuronException executing statement: " + statement);
+                    logging.warn(e.toString());
+                    logging.warn(e.getMessage());
+                    logging.warn(e.getStackTrace());
                     result = "";
                 }
                 reply["statements"].add(result.toString());
