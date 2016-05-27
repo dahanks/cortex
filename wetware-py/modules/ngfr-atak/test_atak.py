@@ -13,13 +13,16 @@ class WetwareWorker(Worker):
         with ApolloConnection(self.args) as self.apollo_conn:
             #this object is getting overloaded to handle all cases (not minimal set)
             incident = {'incident_id': 'My new incident',
+                        'location': [1.0, 2.0]
+                    }
+            join_msg = {'incident_id': 'My new incident',
                         'user': {
                             'name': 'David Horres',
                         }}
             self.publish(incident, topic='/queue/wetware.ngfr.register.new', callback=self.ack)
             self.wait_for_response() #ack
             time.sleep(3)
-            self.publish(incident, topic='/queue/wetware.ngfr.register.join', callback=self.ack)
+            self.publish(join_msg, topic='/queue/wetware.ngfr.register.join', callback=self.ack)
             self.wait_for_response() #ack
             # self.publish(incident, topic='/queue/wetware.ngfr.register.join', callback=self.ack)
             # self.wait_for_response() #join twice to test exception
