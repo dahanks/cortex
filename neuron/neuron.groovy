@@ -83,10 +83,33 @@ public class Neuron {
     }
 
     public neuronAddVertexProperty(name, key, value) {
+    /*The only types supported in Neuron will be:
+      int, double, string, and Geoshape (using list [])
+      Actual lists should be handled by Neuron libraries as
+      multiple property values under the same property key.
+    */
         def vertex = neuronAddVertex(name);
         println "Adding propery: " + key;
-        vertex.property(key, value);
-        println "Property added: " + value;
+        switch(value.getClass()) {
+        case String:
+            vertex.property(key, "base64:" + value.bytes.encodeBase64().toString(););
+            break;
+        case Integer:
+            vertex.property(key, value);
+            break;
+        case BigDecimal:
+            vertex.property(key, value.doubleValue());
+            break;
+        case ArrayList:
+            //If this isn't mapped to a defined property that's typed
+            // as a Geoshape, this will fail (look at exception)
+            vertex.property(key, value);
+            break;
+        default:
+            vertex.property(key, value);
+            break;
+        }
+        println "Property added: " + value.toString();
         return vertex;
     }
 

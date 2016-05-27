@@ -6,6 +6,7 @@
 
 import logging
 import json
+import base64
 
 NEURON_DESTINATION = '/queue/neuron.operation'
 
@@ -208,8 +209,22 @@ class Responses(list):
         # definitely not natively interpretable by Python because it has
         # more colons and brackets. So...
 
-        #Split by the end of a vertex by looking for ]],
+        #Split by the end of a vertex by looking for ]], BUT!
+        # all Geopoints ends this way, so we'll concatenate the pieces as we
+        # find them (NOTE: we try to keep the order
         vertex_list = self[index][1:-1].split(']],')
+        vertex_prefix = None
+        vertex_index = None
+        for index, vertex in enumerate(vertex_list):
+            if any(geo in vertex for geo in ['point[','box[','circle[']):
+                vertex_index = index
+                vertex_prefix = vertex
+            elif vertex_prefix:
+                vertex_suffix = vertex
+                vertex_list.remove(vertex_prefix)
+                vertex_list.remove(vertex_suffix)
+                vertex_list.insert(vertex_index, vertex_prefix + ']], ' + vertex_suffix)
+                vertex_prefix = None
         for vertex_str in vertex_list:
             #take out whitespace
             vertex_str = vertex_str.lstrip()
@@ -220,9 +235,22 @@ class Responses(list):
                 # get rid of the list brackets in the string
                 vertex = vertex_str[1:-1]
                 vertex_obj = {}
-                for prop in vertex.split(','):
+                #super-sensitive to this ', ', because valueMap() doesn't
+                # put spaces in between property values that are lists
+                # (which should really only be Geoshapes)
+                for prop in vertex.split(', '):
                     key = prop.split(':')[0].lstrip()
-                    value = prop.split('[')[1].split(']')[0]
+                    #Geoshapes
+                    if any(geo in prop for geo in ['point[', 'circle[', 'box[']):
+                        value = '[' + prop.split('[')[2].split(']')[0] + ']'
+                    #Strings
+                    elif prop.split(':')[1].startswith("[base64"):
+                        value = base64.b64decode(prop.split(':')[2])
+                    #Float
+                    elif '.' in prop.split(':')[1]:
+                        value = float(prop.split('[')[1].split(']')[0])
+                    else:
+                        value = prop.split('[')[1].split(']')[0]
                     vertex_obj[key] = value
                 vertices.append(vertex_obj)
         return vertices
