@@ -4,6 +4,7 @@ import logging
 import json
 
 from wetware.worker import Worker
+from wetware.worker import FrameException
 import wetware.neuron as Neuron
 
 class WetwareWorker(Worker):
