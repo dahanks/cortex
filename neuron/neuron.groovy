@@ -89,10 +89,14 @@ public class Neuron {
       multiple property values under the same property key.
     */
         def vertex = neuronAddVertex(name);
-        println "Adding propery: " + key;
+        println "Adding property: " + key;
         switch(value.getClass()) {
         case String:
-            vertex.property(key, "base64:" + value.bytes.encodeBase64().toString());
+            if (key == "type") {
+                vertex.property(key, value);
+            } else {
+                vertex.property(key, "base64:" + value.bytes.encodeBase64().toString());
+            }
             break;
         case Integer:
             vertex.property(key, value);
