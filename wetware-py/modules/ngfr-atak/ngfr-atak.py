@@ -154,7 +154,6 @@ class WetwareWorker(Worker):
         sensors = [
             {
                 'name': 'sensor1',
-                #locations are Geoshapes
                 'location': [1.0, 2.0],
                 'type': 'sensor',
                 'sensor_type': 'gas'
@@ -313,7 +312,7 @@ class WetwareWorker(Worker):
         #TODO: update this (always)
         if 'register' in frame.headers['destination']:
             if frame.headers['destination'].endswith('new'):
-                for key in ['incident_id']:
+                for key in ['incident_id', 'location']:
                     if key not in message:
                         raise FrameException("Message has no {0} field".format(key))
             elif frame.headers['destination'].endswith('join'):
