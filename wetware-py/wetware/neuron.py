@@ -254,7 +254,9 @@ def add_vertex_object(vertex_obj):
         raise NeuronException("Tried to create a vertex from a non-dict!")
     statements = Statements()
     for key in vertex_obj:
-        if key != 'name':
+        if isinstance(vertex_obj[key], dict):
+            logging.warning("Won't make properties based on dict: {0}".format(key))
+        elif key != 'name':
             statements.add_vertex_property(vertex_obj['name'],
                                            key,
                                            vertex_obj[key])
