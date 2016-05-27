@@ -111,6 +111,7 @@ class WetwareWorker(Worker):
                 incident_id.replace(' ','_'))
             self.open_incidents[incident_id]['type'] = "ngfr:atak:incident"
             #store incident in Cortex
+            # NOTE: the responders dict() will fall out in a NeuronException
             self.store_in_cortex(self.open_incidents[incident_id])
             logging.info("New incident: {0}".format(incident_id))
             logging.info(self.open_incidents[incident_id])
@@ -153,15 +154,14 @@ class WetwareWorker(Worker):
         sensors = [
             {
                 'name': 'sensor1',
-                'lat': 123.123,
-                'lon': 234.234,
+                #locations are Geoshapes
+                'location': [1.0, 2.0],
                 'type': 'sensor',
                 'sensor_type': 'gas'
             },
             {
                 'name': 'sensor2',
-                'lat': 123.124,
-                'lon': 234.235,
+                'location': [1.1, 2.1],
                 'type': 'sensor',
                 'sensor_type': 'carbon-monoxide'
             }
