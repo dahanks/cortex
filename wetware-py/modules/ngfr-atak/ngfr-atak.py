@@ -111,7 +111,6 @@ class WetwareWorker(Worker):
                 incident_id.replace(' ','_'))
             self.open_incidents[incident_id]['type'] = "ngfr:atak:incident"
             #store incident in Cortex
-            # NOTE: the responders dict() will fall out in a NeuronException
             self.store_in_cortex(self.open_incidents[incident_id])
             logging.info("New incident: {0}".format(incident_id))
             logging.info(self.open_incidents[incident_id])
@@ -123,11 +122,20 @@ class WetwareWorker(Worker):
             self.reply({'error':'Incident already exists.'})
 
     def analyze_incident(self, incident_id):
-        #TODO: ask for sensors using lat-lon indexing and elasticsearch
-        #discover sensors
-        query = "g.V().has('type','sensor').valueMap()"
+        #TODO: determine an appropriate static radius for this search circle
+        SEARCH_RADIUS = 500
+        #find the epicenter of the incident
+        search_coords = []
+        for coord in self.open_incidents[incident_id]['location']:
+            search_coords.append(coord)
+        #take a two-coorindate list and add the radius to make a Geoshape.circle
+        #TODO: make a Geoshape wrapper class for this
+        search_coords.append(SEARCH_RADIUS)
+        #query Cortex for sensors
         context = {'incident_id': incident_id}
-        self.publish(Neuron.gremlin(query), topic=Neuron.NEURON_DESTINATION, callback=self.handle_sensor_discovery, context=context)
+        statements = Neuron.Statements()
+        statements.get_vertices_type_geo_within('sensor','location',search_coords)
+        self.publish(statements, topic=Neuron.NEURON_DESTINATION, callback=self.handle_sensor_discovery, context=context)
         #goto: handle_sensor_discovery()
 
     def handle_sensor_discovery(self, frame, context, transaction):
