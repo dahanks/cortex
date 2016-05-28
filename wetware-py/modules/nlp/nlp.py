@@ -54,9 +54,12 @@ class WetwareWorker(Worker):
             elif words[0] == 'Is':
                 statements = self.parse_question_is(words)
                 callback = self.interpret_audrey_is
-            elif words[0] == 'What':
+            elif words[0] == 'What' and words[1] == 'is' and words[2] == 'the':
                 statements = self.parse_question_what_is_the(words)
                 callback = self.interpret_audrey_what_is_the
+            elif words[0] == 'What' and words[2] == 'are' and words[3] == 'within':
+                statements = self.parse_question_what_are_within(words)
+                callback = self.interpret_audrey_what_are_within
             elif words[0] == 'Who':
                 statements = self.parse_question_who_is(words)
                 callback = self.interpret_audrey_who_is
@@ -114,6 +117,17 @@ class WetwareWorker(Worker):
         obj = words[5].strip()[:-1]
         statements = Statements()
         statements.get_vertex_property(obj, key)
+        return statements
+
+    def parse_question_what_are_within(self, words):
+        #0
+        type_name = words[1].strip()
+        #2 are
+        #3 within
+        location_str = words[4].strip()[:-1]
+        location = self.convert_coords_to_list(location_str)
+        statements = Statements()
+        statements.get_vertices_type_geo_within(type_name, 'location', location)
         return statements
 
     def parse_question_where(self, words):
@@ -191,17 +205,10 @@ class WetwareWorker(Worker):
         #1 is
         #2 at
         location_str = words[3].strip()
-        location = []
         #take out the period
         if '.' in location_str:
             location_str = location_str[:-1]
-        #take out the coord brackets
-        if location_str.startswith('['):
-            location_str = location_str[1:]
-        if location_str.endswith(']'):
-            location_str = location_str[:-1]
-        for coord in location_str.split(','):
-            location.append(float(coord))
+        location = self.convert_coords_to_list(location_str)
         statements = Statements()
         statements.add_vertex_property(subj, 'location', location)
         return statements
@@ -242,6 +249,29 @@ class WetwareWorker(Worker):
             reply = Statements("It appears to be {0}.".format(value), "positive")
         else:
             reply = Statements("You know, I'm just not sure.", "negative")
+        self.reply(reply, transaction)
+
+    def interpret_audrey_what_are_within(self, frame, context, transaction):
+        responses = Responses(frame)
+        value = responses.get_vertex_objects()
+        if value:
+            reply_str = "I see "
+            for index, vertex in enumerate(value):
+                if len(value) == 1:
+                    reply_str += vertex['name']
+                #two values don't have an comma
+                elif len(value) == 2 and index == 0:
+                    reply_str += vertex['name'] + " "
+                #final value
+                elif index == len(value) - 1:
+                    reply_str += "and {0}".format(vertex['name'])
+                #more than two values have Oxford comma
+                else:
+                    reply_str += vertex['name'] + ', '
+            reply_str += " in that area."
+            reply = Statements(reply_str)
+        else:
+            reply = Statements("I don't think there are any in that area.", "negative")
         self.reply(reply, transaction)
 
     def interpret_audrey_who_is(self, frame, context, transaction):
@@ -299,6 +329,17 @@ class WetwareWorker(Worker):
         else:
             reply = Statements("No, I don't believe so.", "negative")
         self.reply(reply, transaction)
+
+    def convert_coords_to_list(self, location_str):
+        location = []
+        #take out the coord brackets
+        if location_str.startswith('['):
+            location_str = location_str[1:]
+        if location_str.endswith(']'):
+            location_str = location_str[:-1]
+        for coord in location_str.split(','):
+            location.append(float(coord))
+        return location
 
     def define_default_args(self):
         ### This header must not be modified ###
