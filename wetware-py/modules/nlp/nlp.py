@@ -3,6 +3,7 @@
 import logging
 import json
 import sys
+import base64
 
 from wetware.worker import Worker
 from wetware.worker import WetwareException
@@ -214,6 +215,8 @@ class WetwareWorker(Worker):
         responses = Responses(frame)
         value = responses[0]
         if value:
+            if value.startswith("base64:"):
+                value = base64.b64decode(value.split(':')[1])
             reply = Statements("It appears to be {0}.".format(value), "positive")
         else:
             reply = Statements("You know, I'm just not sure.", "negative")
