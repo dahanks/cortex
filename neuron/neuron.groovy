@@ -68,6 +68,9 @@ public class Neuron {
             case "addEdge":
                 retVal = neuronAddEdge(it['fromVertex'],it['toVertex'],it['label']);
                 break;
+            case "getVerticesTypeGeoWithin":
+                retVal = neuronGetVerticesTypeGeoWithin(it['type'],it['property'],it['geoshape']);
+                break;
             }
         }
         return retVal;
@@ -138,6 +141,16 @@ public class Neuron {
             return edge_iter.next();
         } else {
             return fromVertex.addEdge(label, toVertex);
+        }
+    }
+
+    public neuronGetVerticesTypeGeoWithin(type, property, geoshape) {
+        if (geoshape.size == 3) {
+            return g.V().has("type", type).has(property, geoWithin(Geoshape.circle(geoshape[0],geoshape[1],geoshape[2]))).valueMap().toList();
+        } else if (geoshape.size == 4) {
+            return g.V().has("type", type).has(property, geoWithin(Geoshape.box(geoshape[0],geoshape[1],geoshape[2],geoshape[3]))).valueMap().toList();
+        } else {
+            return "";
         }
     }
 
