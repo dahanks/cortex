@@ -256,6 +256,13 @@ def add_vertex_object(vertex_obj):
     for key in vertex_obj:
         if isinstance(vertex_obj[key], dict):
             logging.warning("Won't make properties based on dict: {0}".format(key))
+        # elif isinstance(vertex_obj[key], list):
+        #     #TODO: store lists as multiple property vals under same name
+        #     pass
+        # elif isinstance(vertex_obj[key], Geoshape):
+        #     #TODO: create Geoshape class so you can do the above with lists
+        #     #      OR: just let the schema handle it somehow...
+        #     pass
         elif key != 'name':
             statements.add_vertex_property(vertex_obj['name'],
                                            key,
