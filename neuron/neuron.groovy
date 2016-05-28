@@ -98,21 +98,26 @@ public class Neuron {
             if (key == "type") {
                 vertex.property(key, value);
             } else {
-                vertex.property(key, value);
-                //Will push Base64 encoding requirement on to clients for chars:
+                //we could Base64 encode everything, but we'll just push
+                // that responsibility to clients.  Invalid chars are:
                 // '[',  ']', and ','
                 //vertex.property(key, "base64:" + value.bytes.encodeBase64().toString());
+
+                //instead just do it like everything else
+                vertex.property(key, value);
             }
             break;
         case Integer:
+            //this actually works as is, but might as well separate
             vertex.property(key, value);
             break;
         case BigDecimal:
             vertex.property(key, value.doubleValue());
             break;
         case ArrayList:
-            //If this isn't mapped to a defined property that's typed
-            // as a Geoshape, this will fail (look at exception)
+            //Expect ArrayLists to be mapped to Geoshapes.
+            // This requires a property defined in the schema typed as Geoshape
+            // If this isn't the case, this add() will fail (look at exception)
             vertex.property(key, value);
             break;
         default:
