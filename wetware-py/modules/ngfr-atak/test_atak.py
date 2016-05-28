@@ -12,14 +12,18 @@ class WetwareWorker(Worker):
     def run(self):
         with ApolloConnection(self.args) as self.apollo_conn:
             #this object is getting overloaded to handle all cases (not minimal set)
-            incident = {'incident_id': 'My new incident',
-                        'user': {
-                            'name': 'David Horres',
-                        }}
-            self.publish(incident, topic='/queue/wetware.ngfr.register.new', callback=self.ack)
+            create_incident = {'incident_id': 'My new incident',
+                               'location': [1.0, 2.0]
+                           }
+            join_incident = {'incident_id': 'My new incident',
+                             'user': {
+                                 'name': 'David Horres',
+                             }}
+            close_incident = {'incident_id': 'My new incident' }
+            self.publish(create_incident, topic='/queue/wetware.ngfr.register.new', callback=self.ack)
             self.wait_for_response() #ack
             time.sleep(3)
-            self.publish(incident, topic='/queue/wetware.ngfr.register.join', callback=self.ack)
+            self.publish(join_incident, topic='/queue/wetware.ngfr.register.join', callback=self.ack)
             self.wait_for_response() #ack
             # self.publish(incident, topic='/queue/wetware.ngfr.register.join', callback=self.ack)
             # self.wait_for_response() #join twice to test exception
@@ -27,7 +31,7 @@ class WetwareWorker(Worker):
             self.wait_for_response() #alert1
             self.wait_for_response() #alert2
             time.sleep(5)
-            self.publish(incident, topic='/queue/wetware.ngfr.register.close', callback=self.ack)
+            self.publish(close_incident, topic='/queue/wetware.ngfr.register.close', callback=self.ack)
             self.wait_for_response() #ack
 
     def wait_for_response(self):

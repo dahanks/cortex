@@ -6,6 +6,7 @@
 
 import logging
 import json
+import base64
 
 NEURON_DESTINATION = '/queue/neuron.operation'
 
@@ -82,6 +83,20 @@ class Statements(dict):
         fxn = {'fxn': 'getVertexProperty',
                'name': name,
                'property': prop_name }
+        statement['fxns'].append(fxn)
+        self['statements'].append(statement)
+
+    def get_vertices_type_geo_within(self, type_name, prop_name, geoshape):
+        """Return all vertices of the specified type within the specified geoshape.
+        Geoshape must be a list of length 3, or 4 -> circle, box.
+        """
+        if len(geoshape) not in [3, 4]:
+            raise NeuronException("Tried to search with invalid Geoshape: {0}".format(geoshape))
+        statement = {'fxns': [], 'api': 'neuron'}
+        fxn = {'fxn': 'getVerticesTypeGeoWithin',
+               'type': type_name,
+               'property': prop_name,
+               'geoshape': geoshape }
         statement['fxns'].append(fxn)
         self['statements'].append(statement)
 
@@ -208,21 +223,40 @@ class Responses(list):
         # definitely not natively interpretable by Python because it has
         # more colons and brackets. So...
 
-        #Split by the end of a vertex by looking for ]],
-        vertex_list = self[index][1:-1].split(']],')
+        #Split by the end of a vertex by looking for ']], ['
+        vertex_list = self[index][1:-1].split(']], [')
         for vertex_str in vertex_list:
             #take out whitespace
             vertex_str = vertex_str.lstrip()
             if vertex_str:
-                #add those closing brackets ']]' back in for uniformity
+                #add those starting and closing brackets ']]' back in for
+                #treating everything uniformly
+                if not vertex_str.startswith('['):
+                    vertex_str = '[' + vertex_str
                 if not vertex_str.endswith(']]'):
                     vertex_str += ']]'
                 # get rid of the list brackets in the string
                 vertex = vertex_str[1:-1]
                 vertex_obj = {}
-                for prop in vertex.split(','):
+                #super-sensitive to this ', ', because valueMap() doesn't
+                # put spaces in between property values that are lists
+                # (which should really only be Geoshapes)
+                for prop in vertex.split(', '):
                     key = prop.split(':')[0].lstrip()
-                    value = prop.split('[')[1].split(']')[0]
+                    #Geoshapes
+                    if any(geo in prop for geo in ['point[', 'circle[', 'box[']):
+                        #TODO: cast this into a wetware Geoshape class
+                        #convert the text to a list (take out the shape name)
+                        value = []
+                        coords = prop.split('[')[2].split(']')[0].split(',')
+                        for coord in coords:
+                            value.append(float(coord))
+                    #Strings
+                    elif prop.split(':')[1].startswith("[base64"):
+                        value = base64.b64decode(prop.split(':')[2])
+                    #Ints, Floats, and everything else
+                    else:
+                        value = prop.split('[')[1].split(']')[0]
                     vertex_obj[key] = value
                 vertices.append(vertex_obj)
         return vertices
@@ -239,7 +273,16 @@ def add_vertex_object(vertex_obj):
         raise NeuronException("Tried to create a vertex from a non-dict!")
     statements = Statements()
     for key in vertex_obj:
-        if key != 'name':
+        if isinstance(vertex_obj[key], dict):
+            logging.warning("Won't make properties based on dict: {0}".format(key))
+        # elif isinstance(vertex_obj[key], list):
+        #     #TODO: store lists as multiple property vals under same name
+        #     pass
+        # elif isinstance(vertex_obj[key], Geoshape):
+        #     #TODO: create Geoshape class so you can do the above with lists
+        #     #      OR: just let the schema handle it somehow...
+        #     pass
+        elif key != 'name':
             statements.add_vertex_property(vertex_obj['name'],
                                            key,
                                            vertex_obj[key])

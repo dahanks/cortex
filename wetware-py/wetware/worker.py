@@ -143,7 +143,8 @@ class Worker(object):
                 #delete if we're done the callback, but didn't need to reply
                 if transaction in self.transactions:
                     del self.transactions[transaction]
-            except TypeError:
+            except TypeError, e:
+                logging.exception(e)
                 raise WetwareException("You implemented a callback with an invalid definition")
         else:
             raise WetwareException("Invalid callback provided: {0}".format(callback))

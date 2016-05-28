@@ -4,6 +4,7 @@ import logging
 import json
 
 from wetware.worker import Worker
+from wetware.worker import FrameException
 import wetware.neuron as Neuron
 
 class WetwareWorker(Worker):
@@ -121,11 +122,20 @@ class WetwareWorker(Worker):
             self.reply({'error':'Incident already exists.'})
 
     def analyze_incident(self, incident_id):
-        #TODO: ask for sensors using lat-lon indexing and elasticsearch
-        #discover sensors
-        query = "g.V().has('type','sensor').valueMap()"
+        #TODO: determine an appropriate static radius for this search circle
+        SEARCH_RADIUS = 500
+        #find the epicenter of the incident
+        search_coords = []
+        for coord in self.open_incidents[incident_id]['location']:
+            search_coords.append(coord)
+        #take a two-coorindate list and add the radius to make a Geoshape.circle
+        #TODO: make a Geoshape wrapper class for this
+        search_coords.append(SEARCH_RADIUS)
+        #query Cortex for sensors
         context = {'incident_id': incident_id}
-        self.publish(Neuron.gremlin(query), topic=Neuron.NEURON_DESTINATION, callback=self.handle_sensor_discovery, context=context)
+        statements = Neuron.Statements()
+        statements.get_vertices_type_geo_within('sensor','location',search_coords)
+        self.publish(statements, topic=Neuron.NEURON_DESTINATION, callback=self.handle_sensor_discovery, context=context)
         #goto: handle_sensor_discovery()
 
     def handle_sensor_discovery(self, frame, context, transaction):
@@ -152,15 +162,13 @@ class WetwareWorker(Worker):
         sensors = [
             {
                 'name': 'sensor1',
-                'lat': 123.123,
-                'lon': 234.234,
+                'location': [1.0, 2.0],
                 'type': 'sensor',
                 'sensor_type': 'gas'
             },
             {
                 'name': 'sensor2',
-                'lat': 123.124,
-                'lon': 234.235,
+                'location': [1.1, 2.1],
                 'type': 'sensor',
                 'sensor_type': 'carbon-monoxide'
             }
@@ -312,7 +320,7 @@ class WetwareWorker(Worker):
         #TODO: update this (always)
         if 'register' in frame.headers['destination']:
             if frame.headers['destination'].endswith('new'):
-                for key in ['incident_id']:
+                for key in ['incident_id', 'location']:
                     if key not in message:
                         raise FrameException("Message has no {0} field".format(key))
             elif frame.headers['destination'].endswith('join'):

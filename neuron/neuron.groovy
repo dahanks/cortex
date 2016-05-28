@@ -68,6 +68,9 @@ public class Neuron {
             case "addEdge":
                 retVal = neuronAddEdge(it['fromVertex'],it['toVertex'],it['label']);
                 break;
+            case "getVerticesTypeGeoWithin":
+                retVal = neuronGetVerticesTypeGeoWithin(it['type'],it['property'],it['geoshape']);
+                break;
             }
         }
         return retVal;
@@ -83,10 +86,45 @@ public class Neuron {
     }
 
     public neuronAddVertexProperty(name, key, value) {
+    /*The only types supported in Neuron will be:
+      int, double, string, and Geoshape (using list [])
+      Actual lists should be handled by Neuron libraries as
+      multiple property values under the same property key.
+    */
         def vertex = neuronAddVertex(name);
-        println "Adding propery: " + key;
-        vertex.property(key, value);
-        println "Property added: " + value;
+        println "Adding property: " + key;
+        switch(value.getClass()) {
+        case String:
+            if (key == "type") {
+                vertex.property(key, value);
+            } else {
+                //we could Base64 encode everything, but we'll just push
+                // that responsibility to clients.  Invalid chars are:
+                // '[',  ']', and ','
+                //vertex.property(key, "base64:" + value.bytes.encodeBase64().toString());
+
+                //instead just do it like everything else
+                vertex.property(key, value);
+            }
+            break;
+        case Integer:
+            //this actually works as is, but might as well separate
+            vertex.property(key, value);
+            break;
+        case BigDecimal:
+            vertex.property(key, value.doubleValue());
+            break;
+        case ArrayList:
+            //Expect ArrayLists to be mapped to Geoshapes.
+            // This requires a property defined in the schema typed as Geoshape
+            // If this isn't the case, this add() will fail (look at exception)
+            vertex.property(key, value);
+            break;
+        default:
+            vertex.property(key, value);
+            break;
+        }
+        println "Property added: " + value.toString();
         return vertex;
     }
 
@@ -108,6 +146,16 @@ public class Neuron {
             return edge_iter.next();
         } else {
             return fromVertex.addEdge(label, toVertex);
+        }
+    }
+
+    public neuronGetVerticesTypeGeoWithin(type, property, geoshape) {
+        if (geoshape.size == 3) {
+            return g.V().has("type", type).has(property, geoWithin(Geoshape.circle(geoshape[0],geoshape[1],geoshape[2]))).valueMap().toList();
+        } else if (geoshape.size == 4) {
+            return g.V().has("type", type).has(property, geoWithin(Geoshape.box(geoshape[0],geoshape[1],geoshape[2],geoshape[3]))).valueMap().toList();
+        } else {
+            return "";
         }
     }
 
@@ -177,6 +225,10 @@ public class Neuron {
                         result = result.toList();
                     }
                 } catch (Exception e) {
+                    logging.warn("NeuronException executing statement: " + statement);
+                    logging.warn(e.toString());
+                    logging.warn(e.getMessage());
+                    logging.warn(e.getStackTrace());
                     result = "";
                 }
                 reply["statements"].add(result.toString());
@@ -199,6 +251,30 @@ public class Neuron {
         }
     }
 
+    //Creates property keys for 'name', 'type', and 'location'
+    //Creates composite index on 'name', and 'name'+'type'
+    //Creates mixed index on 'name', 'type', and 'location'
+    public void initializeIndexing() {
+
+        //can't seem to add indexes in a separate transaction from when creating
+        // the property keys, so we'll do it altogether
+        //This only checks to see if 'name' was created, so incomplete setups
+        // will not setup correctly on subsequent runs
+        def mgmt = graph.openManagement();
+        if (! mgmt.containsPropertyKey('name')) {
+            def name = mgmt.makePropertyKey('name').dataType(String.class).cardinality(Cardinality.SINGLE).make();
+            def type = mgmt.makePropertyKey('type').dataType(String.class).cardinality(Cardinality.SINGLE).make();
+            def location = mgmt.makePropertyKey('location').dataType(Geoshape.class).make();
+            mgmt.buildIndex('byNameComposite', Vertex.class).addKey(name).buildCompositeIndex();
+            mgmt.buildIndex('byTypeComposite', Vertex.class).addKey(type).buildCompositeIndex();
+            mgmt.buildIndex('byNameTypeComposite', Vertex.class).addKey(name).addKey(type).buildCompositeIndex();
+            mgmt.buildIndex('byNameMixed', Vertex.class).addKey(name, Mapping.TEXT.asParameter()).buildMixedIndex("search");
+            mgmt.buildIndex('byTypeMixed', Vertex.class).addKey(type, Mapping.TEXT.asParameter()).buildMixedIndex("search");
+            mgmt.buildIndex('byGeoMixed', Vertex.class).addKey(location).buildMixedIndex("search");
+        }
+        mgmt.commit();
+    }
+
     public void run() {
         while (true) {
             try {
@@ -215,4 +291,5 @@ public class Neuron {
 
 neuron = new Neuron();
 neuron.initialize();
+neuron.initializeIndexing();
 neuron.run();

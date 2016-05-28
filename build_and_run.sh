@@ -27,6 +27,7 @@ make
 popd
 
 #Neuron
+sleep 10 #wait for cassandra, just in case
 pushd neuron/
 make && make run
 popd
