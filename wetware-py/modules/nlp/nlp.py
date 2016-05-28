@@ -135,6 +135,8 @@ class WetwareWorker(Worker):
             statements = None
             if words[0] == 'The' and words[2] == 'of' and words[4] == 'is':
                 statements = self.parse_sentence_the_of_is(words)
+            elif len(words) == 4 and words[1] == 'is' and words[2] == 'at':
+                statements = self.parse_sentence_location(words)
             elif len(words) == 3:
                 statements = self.parse_sentence_predicate(words)
             elif transaction:
@@ -182,6 +184,26 @@ class WetwareWorker(Worker):
             value = value[:-1]
         statements = Statements()
         statements.add_vertex_property(subj, key, value)
+        return statements
+
+    def parse_sentence_location(self, words):
+        subj = words[0].strip()
+        #1 is
+        #2 at
+        location_str = words[3].strip()
+        location = []
+        #take out the period
+        if '.' in location_str:
+            location_str = location_str[:-1]
+        #take out the coord brackets
+        if location_str.startswith('['):
+            location_str = location_str[1:]
+        if location_str.endswith(']'):
+            location_str = location_str[:-1]
+        for coord in location_str.split(','):
+            location.append(float(coord))
+        statements = Statements()
+        statements.add_vertex_property(subj, 'location', location)
         return statements
 
     def acknowledge_response(self, frame, context, transaction):
