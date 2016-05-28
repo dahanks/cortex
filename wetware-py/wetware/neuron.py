@@ -245,7 +245,12 @@ class Responses(list):
                     key = prop.split(':')[0].lstrip()
                     #Geoshapes
                     if any(geo in prop for geo in ['point[', 'circle[', 'box[']):
-                        value = '[' + prop.split('[')[2].split(']')[0] + ']'
+                        #TODO: cast this into a wetware Geoshape class
+                        #convert the text to a list (take out the shape name)
+                        value = []
+                        coords = prop.split('[')[2].split(']')[0].split(',')
+                        for coord in coords:
+                            value.append(float(coord))
                     #Strings
                     elif prop.split(':')[1].startswith("[base64"):
                         value = base64.b64decode(prop.split(':')[2])
