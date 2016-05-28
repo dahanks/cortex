@@ -86,6 +86,20 @@ class Statements(dict):
         statement['fxns'].append(fxn)
         self['statements'].append(statement)
 
+    def get_vertices_type_geo_within(self, type_name, prop_name, geoshape):
+        """Return all vertices of the specified type within the specified geoshape.
+        Geoshape must be a list of length 3, or 4 -> circle, box.
+        """
+        if len(geoshape) not in [3, 4]:
+            raise NeuronException("Tried to search with invalid Geoshape: {0}".format(geoshape))
+        statement = {'fxns': [], 'api': 'neuron'}
+        fxn = {'fxn': 'getVerticesTypeGeoWithin',
+               'type': type_name,
+               'property': prop_name,
+               'geoshape': geoshape }
+        statement['fxns'].append(fxn)
+        self['statements'].append(statement)
+
     def gremlin(self, *raw_statements):
         """Composes a list Gremlin statements to run, and each will be returned as a
         reply.  Multiple statements can be passed as arguments.
