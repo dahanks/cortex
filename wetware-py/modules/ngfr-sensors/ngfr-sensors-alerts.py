@@ -10,7 +10,7 @@ from wetware.worker import ApolloConnection
 from wetware.neuron import Statements
 
 ALCOHOL_THRESHOLD = 10
-TEMP_THRESHOLD = 20
+TEMP_THRESHOLD = 25
 
 class WetwareWorker(Worker):
 
