@@ -1,7 +1,7 @@
 .PHONY: build run
 
 IMAGE=wetware-ngfr-sensors
-VERSION=1.0.0
+VERSION=1.1.0
 FROM_IMAGE=$(shell grep FROM Dockerfile | cut -d " " -f 2)
 CONTAINER=sensors
 
