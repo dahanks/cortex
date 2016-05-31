@@ -39,9 +39,10 @@ class WetwareWorker(Worker):
         node = message['clientname']
         lat = message['latitude']
         lon = message['longitude']
-        lat_lon = "[{0},{1}]".format(lat, lon)
+        #lists get converted to Geoshapes by Neuron
+        lat_lon = [lat, lon]
         statements = Statements()
-        statements.add_vertex_property(node, "location", str(lat_lon))
+        statements.add_vertex_property(node, "location", lat_lon)
         self.publish(statements)
 
     def parse_sensortag_data(self, message):
