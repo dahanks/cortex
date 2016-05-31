@@ -34,6 +34,8 @@ class WetwareWorker(Worker):
             self.parse_gps_data(json.loads(message.payload))
         elif (message.topic.endswith("/sensortag")):
             self.parse_sensortag_data(json.loads(message.payload))
+        elif (message.topic.endswith("/grove")):
+            self.parse_grove_data(json.loads(message.payload))
 
     def parse_gps_data(self, message):
         node = message['clientname']
@@ -41,19 +43,41 @@ class WetwareWorker(Worker):
         lon = message['longitude']
         #lists get converted to Geoshapes by Neuron
         lat_lon = [lat, lon]
+        logging.info("{0}: location: {1}".format(node, lat_lon))
         statements = Statements()
         statements.add_vertex_property(node, "location", lat_lon)
         self.publish(statements)
 
     def parse_sensortag_data(self, message):
+        """Lots of data here, but let's just get the temperature
+        """
         node = message['clientname']
-        humidity = message['humidity']['relative_humidity']
+        ir_temp = message['ir_temp']
+        ambient_temp = ir_temp['ambient_temp']
+        target_temp = ir_temp['target_temp']
+        logging.info("{0}: ambient_temp: {1}, target_temp: {2}".format(node, ambient_temp, target_temp))
         statements = Statements()
-        statements.add_vertex_property(node, "humidity", str(humidity))
+        statements.add_vertex_property(node, "ambient_temp", ambient_temp)
+        statements.add_vertex_property(node, "target_temp", target_temp)
         self.publish(statements)
 
+    def parse_grove_data(self, message):
+        """This is the alcohol sensor
+        """
+        node = message['clientname']
+        sensors = message['sensors']
+        for sensor in sensors:
+            if sensor['name'] == "Alcohol":
+                alcohol = sensor['value']
+                break
+        if alcohol:
+            logging.info("{0}: alcohol: {1}".format(node, alcohol))
+            statements = Statements()
+            statements.add_vertex_property(node, "alcohol", alcohol)
+            self.publish(statements)
+
 def main():
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
     wetware_worker = WetwareWorker("wetware")
     wetware_worker.run()
 
