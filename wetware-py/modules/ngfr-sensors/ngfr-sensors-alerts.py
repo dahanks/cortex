@@ -9,6 +9,9 @@ from wetware.worker import ApolloConnection
 
 from wetware.neuron import Statements
 
+ALCOHOL_THRESHOLD = 10
+TEMP_THRESHOLD = 25
+
 class WetwareWorker(Worker):
 
     def __init__(self, subclass_section):
@@ -17,6 +20,7 @@ class WetwareWorker(Worker):
         self.mqtt_client = mqtt.Client()
         self.mqtt_client.on_connect = self.mqtt_on_connect
         self.mqtt_client.on_message = self.mqtt_on_message
+        self.known_sensors = {}
 
     def mqtt_run(self):
         self.mqtt_client.connect(self.args['mqtt_host'], self.args['mqtt_port'])
@@ -46,6 +50,11 @@ class WetwareWorker(Worker):
         logging.info("{0}: location: {1}".format(node, lat_lon))
         statements = Statements()
         statements.add_vertex_property(node, "location", lat_lon)
+        if node not in self.known_sensors:
+            self.known_sensors[node] = {'name': node }
+            #only need to set this sensor type once for Cortex
+            statements.add_vertex_property(node, "type", "sensor")
+        self.known_sensors[node]['location'] = lat_lon
         self.publish(statements)
 
     def parse_sensortag_data(self, message):
@@ -59,13 +68,22 @@ class WetwareWorker(Worker):
         statements = Statements()
         statements.add_vertex_property(node, "ambient_temp", ambient_temp)
         statements.add_vertex_property(node, "target_temp", target_temp)
+        if node not in self.known_sensors:
+            self.known_sensors[node] = {'name': node }
+            #only need to set this sensor type once for Cortex
+            statements.add_vertex_property(node, "type", "sensor")
+        self.known_sensors[node]['ambient_temp'] = ambient_temp
+        self.known_sensors[node]['target_temp'] = target_temp
         self.publish(statements)
+        if ambient_temp > TEMP_THRESHOLD or target_temp > TEMP_THRESHOLD:
+            self.check_for_danger()
 
     def parse_grove_data(self, message):
         """This is the alcohol sensor
         """
         node = message['clientname']
         sensors = message['sensors']
+        alcohol = None
         for sensor in sensors:
             if sensor['name'] == "Alcohol":
                 alcohol = sensor['value']
@@ -74,7 +92,32 @@ class WetwareWorker(Worker):
             logging.info("{0}: alcohol: {1}".format(node, alcohol))
             statements = Statements()
             statements.add_vertex_property(node, "alcohol", alcohol)
+            if node not in self.known_sensors:
+                self.known_sensors[node] = {'name': node }
+                #only need to set this sensor type once for Cortex
+                statements.add_vertex_property(node, "type", "sensor")
+            self.known_sensors[node]['alcohol'] = alcohol
             self.publish(statements)
+            if alcohol > ALCOHOL_THRESHOLD:
+                self.check_for_danger()
+
+    def check_for_danger(self):
+        high_alcohol = False
+        high_temp = False
+        epicenter = "Unknown"
+        for sensor in self.known_sensors.values():
+            if 'alcohol' in sensor and sensor['alcohol'] > ALCOHOL_THRESHOLD:
+                high_alcohol = True
+                if 'location' in sensor:
+                    epicenter = sensor['location']
+            if 'ambient_temp' in sensor and sensor['ambient_temp'] > TEMP_THRESHOLD:
+                high_temp = True
+            if 'target_temp' in sensor and sensor['target_temp'] > TEMP_THRESHOLD:
+                high_temp = True
+        if high_alcohol and high_temp:
+            alert_msg = "Dangerous levels of alcohol and temperature near {0}".format(epicenter)
+            logging.warning(alert_msg)
+            self.mqtt_client.publish("global/alert", alert_msg)
 
 def main():
     logging.basicConfig(level=logging.INFO)
