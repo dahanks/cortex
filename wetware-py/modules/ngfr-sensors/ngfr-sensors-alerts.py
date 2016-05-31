@@ -10,7 +10,7 @@ from wetware.worker import ApolloConnection
 from wetware.neuron import Statements
 
 ALCOHOL_THRESHOLD = 10
-TEMP_THRESHOLD = 25
+TEMP_THRESHOLD = 20
 
 class WetwareWorker(Worker):
 
@@ -115,7 +115,9 @@ class WetwareWorker(Worker):
             if 'target_temp' in sensor and sensor['target_temp'] > TEMP_THRESHOLD:
                 high_temp = True
         if high_alcohol and high_temp:
-            alert_msg = "Dangerous levels of alcohol and temperature near {0}".format(epicenter)
+            alert_msg = {
+                'message': "Dangerous levels of alcohol and temperature near {0}".format(epicenter)
+            }
             logging.warning(alert_msg)
             self.mqtt_client.publish("global/alert", alert_msg)
 
