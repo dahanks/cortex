@@ -118,8 +118,8 @@ class WetwareWorker(Worker):
             alert_msg = {
                 'message': "Dangerous levels of alcohol and temperature near {0}".format(epicenter)
             }
-            logging.warning(alert_msg)
-            self.mqtt_client.publish("global/alert", alert_msg)
+            logging.warning(str(alert_msg))
+            self.mqtt_client.publish("global/alert", str(alert_msg))
 
 def main():
     logging.basicConfig(level=logging.INFO)
