@@ -9,8 +9,11 @@ from wetware.worker import ApolloConnection
 
 from wetware.neuron import Statements
 
-ALCOHOL_THRESHOLD = 10
-TEMP_THRESHOLD = 20
+import math
+DEGREES_PER_METER=0.000008983
+
+def distance(p0, p1):
+    return math.sqrt((p0[0] - p1[0])**2 + (p0[1] - p1[1])**2)
 
 class WetwareWorker(Worker):
 
@@ -105,21 +108,31 @@ class WetwareWorker(Worker):
         high_alcohol = False
         high_temp = False
         epicenter = "Unknown"
+        alcohol_location = None
+        temp_location = None
         for sensor in self.known_sensors.values():
-            if 'alcohol' in sensor and sensor['alcohol'] > ALCOHOL_THRESHOLD:
+            if 'alcohol' in sensor and sensor['alcohol'] > float(self.args['alcohol_threshold']):
                 high_alcohol = True
                 if 'location' in sensor:
+                    alcohol_location = sensor['location']
                     epicenter = sensor['location']
-            if 'ambient_temp' in sensor and sensor['ambient_temp'] > TEMP_THRESHOLD:
+            if 'ambient_temp' in sensor and sensor['ambient_temp'] > float(self.args['temp_threshold']):
                 high_temp = True
-            if 'target_temp' in sensor and sensor['target_temp'] > TEMP_THRESHOLD:
+                if 'location' in sensor:
+                    temp_location = sensor['location']
+            if 'target_temp' in sensor and sensor['target_temp'] > float(self.args['temp_threshold']):
                 high_temp = True
+                if 'location' in sensor:
+                    temp_location = sensor['location']
         if high_alcohol and high_temp:
-            alert_msg = {
-                'message': "Dangerous levels of alcohol and temperature near {0}".format(epicenter)
-            }
-            logging.warning(str(alert_msg))
-            self.mqtt_client.publish("global/alert", str(alert_msg))
+            distance_in_meters = float(distance(alcohol_location, temp_location))/float(DEGREES_PER_METER)
+            logging.warning("High alcohol and temperature, distance apart in meters: {0}".format(distance_in_meters))
+            if alcohol_location and temp_location and (distance_in_meters <= float(self.args['danger_distance_in_meters'])):
+                alert_msg = {
+                    'message': "Dangerous levels of alcohol and temperature near {0}. Substances only {1} meters apart".format(epicenter,distance_in_meters)
+                }
+                logging.warning(str(alert_msg))
+                self.mqtt_client.publish("global/alert", str(alert_msg))
 
 def main():
     logging.basicConfig(level=logging.INFO)
