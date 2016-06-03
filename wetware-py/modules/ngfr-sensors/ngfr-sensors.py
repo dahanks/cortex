@@ -75,7 +75,7 @@ class WetwareWorker(Worker):
         self.known_sensors[node]['ambient_temp'] = ambient_temp
         self.known_sensors[node]['target_temp'] = target_temp
         self.publish(statements)
-        if ambient_temp > TEMP_THRESHOLD or target_temp > TEMP_THRESHOLD:
+        if ambient_temp > self.args['temp_threshold'] or target_temp > self.args['temp_threshold']:
             self.check_for_danger()
 
     def parse_grove_data(self, message):
@@ -98,7 +98,7 @@ class WetwareWorker(Worker):
                 statements.add_vertex_property(node, "type", "sensor")
             self.known_sensors[node]['alcohol'] = alcohol
             self.publish(statements)
-            if alcohol > ALCOHOL_THRESHOLD:
+            if alcohol > float(self.args['alcohol_threshold']):
                 self.check_for_danger()
 
     def check_for_danger(self):
