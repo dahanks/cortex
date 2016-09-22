@@ -62,6 +62,9 @@ function handle_audrey_response(message) {
         }, 2400);
         break;
     }
+
+    //somehow the you-dialog keeps getting a <br> at this point
+    $("#you-dialog").empty();
 }
 
 $(document).ready(main);
