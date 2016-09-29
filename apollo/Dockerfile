@@ -23,8 +23,8 @@ ENV APOLLO_BROKER /opt/apollo-broker
 RUN $APOLLO_HOME/bin/apollo create $APOLLO_BROKER
 
 COPY apollo.xml $APOLLO_BROKER/etc/
-
 COPY users.properties $APOLLO_BROKER/etc/
+COPY groups.properties $APOLLO_BROKER/etc/
 
 EXPOSE 61613 61623
 
