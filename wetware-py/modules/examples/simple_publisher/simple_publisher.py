@@ -24,7 +24,7 @@ class PublisherWorker(Worker):
                     self.publish(data)
                     break
 
-    def print_reply(self, frame, destination):
+    def print_reply(self, frame, context, transaction):
         print json.dumps(json.loads(frame.body), sort_keys=True, indent=4, separators=(',', ': '))
 
 def main():
