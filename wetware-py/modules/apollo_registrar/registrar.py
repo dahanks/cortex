@@ -19,7 +19,7 @@ class Registrar(Worker):
             user = message['username']
             pw = message['password']
             logging.info("Registering user: {0}".format(user))
-            call(['/bin/bash', 'add_user.sh', user, pw])
+            call(['/bin/bash', 'register_user.sh', user, pw])
 
 def main():
     logging.basicConfig(level=logging.DEBUG)
