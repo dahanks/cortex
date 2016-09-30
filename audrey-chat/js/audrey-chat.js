@@ -1,7 +1,37 @@
 var main = function() {
-    draw_audrey();
-    draw_you();
-    setup_websocket();
+    prompt_login();
+}
+
+function prompt_login() {
+    $("#login_form").submit(function () {
+        var username = $("#username").val();
+        var password = $("#password").val();
+        authenticate_user(username, password);
+        //don't refresh after submit
+        return false;
+    });
+}
+
+function authenticate_user(username, password) {
+    // test WS connection with credentials
+    if (window.WebSocket) {
+        client = Stomp.client(URL);
+        client.connect(username, password, handle_auth_success, handle_auth_failure);
+
+        // if success: tear it down and start over again
+        function handle_auth_success(frame) {
+            $("#prompt_box").hide();
+            draw_audrey();
+            draw_you();
+            setup_websocket(username, password);
+        }
+
+        function handle_auth_failure(error) {
+            $("#error_message").show();
+        }
+    } else {
+        console.log("You're browser does not support WebSockets!");
+    }
 }
 
 function draw_audrey() {
