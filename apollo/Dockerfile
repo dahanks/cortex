@@ -8,6 +8,7 @@ ENV APOLLO apache-apollo-$APOLLO_VERSION
 ENV APOLLO_TAR $APOLLO-unix-distro.tar.gz
 ENV APOLLO_HOME /opt/apollo
 ENV APOLLO_USER apollo
+ENV APOLLO_ENCRYPTION_PASSWORD youshouldchangethis
 
 RUN \
     curl -s -O http://archive.apache.org/dist/activemq/activemq-apollo/$APOLLO_VERSION/$APOLLO_TAR && \
