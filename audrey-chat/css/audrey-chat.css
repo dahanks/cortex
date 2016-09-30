@@ -65,10 +65,42 @@ h1 {
   height: 100%;
   width: auto;
 }
-#prompt_box {
+.prompt_box {
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+.prompt_box input {
+  font-size: 20px;
+}
+#login_form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+#login_form input {
+  margin: 10px;
+}
+#register_box {
+  background-image: url('../img/stationery.jpg');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  min-height: 790px;
+  min-width: 700px;
+  font-family: cursive;
+  font-size: 35px;
+}
+#register_form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+#register_form #send_button {
+  align-self: center;
+}
+.letter_buffer {
+  min-height: 250px;
 }
 #error_message {
   color: #ff0000;

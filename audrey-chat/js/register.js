@@ -4,6 +4,10 @@ var REGISTER_USER = "registrar";
 var REGISTER_QUEUE = "/queue/audrey.register";
 
 var main = function() {
+    $("#username").keyup(function() {
+        var username = $(this).val();
+        $("#mirror_username").html(username || '&nbsp');
+    });
     $("#password").change(validate_passwords);
     $("#confirm_password").change(validate_passwords);
     $("#register_form").submit(function () {
