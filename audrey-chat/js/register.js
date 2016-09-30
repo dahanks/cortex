@@ -37,6 +37,7 @@ function connect_callback(frame) {
 }
 
 function error_callback(error) {
+    $("#auth_code").val('');
     $("#error_message").show();
 }
 

@@ -27,6 +27,7 @@ function authenticate_user(username, password) {
         }
 
         function handle_auth_failure(error) {
+            $("#password").val('');
             $("#error_message").show();
         }
     } else {
