@@ -32,7 +32,7 @@ function on_message(message) {
     }
 }
 
-function submitAudreyChat(statement) {
+function publish_statement(statement) {
     var json_data = {'statements': [statement]}
     var json_data_str = JSON.stringify(json_data);
     var reply_to_topic = '/temp-queue/' + guid();

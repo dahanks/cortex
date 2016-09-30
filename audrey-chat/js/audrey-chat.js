@@ -8,7 +8,9 @@ function draw_audrey() {
     $("#audrey").append("<div id=audrey-dialog class=dialog></div>");
     $("#audrey").append("<div id=audrey-avatar></div>");
     $("#audrey-avatar").append("<img id=audrey-img src='img/idle.gif'>");
+    $("#audrey-dialog").text("Hello, I'm Audrey.");
 }
+
 function draw_you() {
     $("#you").append("<div id=you-avatar></div>");
     $("#you").append("<div id=you-dialog class=dialog contenteditable></div>");
@@ -24,7 +26,7 @@ function draw_you() {
 function submit_chat(text_input) {
     $("#you-dialog").empty();
     $("#audrey-dialog").empty();
-    submitAudreyChat(text_input);
+    publish_statement(text_input);
 }
 
 function handle_audrey_response(message) {
