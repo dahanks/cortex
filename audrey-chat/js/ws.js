@@ -1,15 +1,16 @@
-var client;
-var url = "ws://" + location.host + ":61623";
-var user = "admin";
-var password = "password";
-var wetware_topic = "/queue/wetware.nlp";
-var reply_topics = [];
-var reconnect_interval;
+var URL = "ws://" + location.host + ":61623";
+var WETWARE_TOPIC = "/queue/wetware.nlp";
 
-function setup_websocket() {
+var client;
+var reply_topics = [];
+
+function setup_websocket(username, password) {
     if (window.WebSocket) {
-        client = Stomp.client(url);
-        client.connect(user, password, connect_callback, error_callback);
+        client = Stomp.client(URL);
+        client.connect(username, password, null, function(error) {
+            //go back to login on back connection/timeout
+            location.reload();
+        });
     } else {
         console.log("You're browser does not support WebSockets!");
     }
@@ -31,30 +32,14 @@ function on_message(message) {
     }
 }
 
-function connect_callback(frame) {
-    clearInterval(reconnect_interval);
-    reconnect_interval = "";
-}
-
-function error_callback(error) {
-    if (!reconnect_interval &&
-        (error.indexOf("Stale connection") != -1 ||
-         error.indexOf("Lost connection") != -1)) {
-        reconnect_interval = setInterval(function() {
-            client = Stomp.client(url);
-            client.connect(user, password, connect_callback, error_callback);
-        }, 10000);
-    }
-}
-
-function submitAudreyChat(statement) {
+function publish_statement(statement) {
     var json_data = {'statements': [statement]}
     var json_data_str = JSON.stringify(json_data);
     var reply_to_topic = '/temp-queue/' + guid();
     var headers = {'reply-to': reply_to_topic};
     reply_topics.push(reply_to_topic);
     client.subscribe(reply_to_topic, on_message);
-    client.send(wetware_topic, headers, json_data_str);
+    client.send(WETWARE_TOPIC, headers, json_data_str);
 }
 
 function guid() {

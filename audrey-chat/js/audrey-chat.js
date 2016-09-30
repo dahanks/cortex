@@ -1,14 +1,47 @@
 var main = function() {
-    draw_audrey();
-    draw_you();
-    setup_websocket();
+    prompt_login();
+}
+
+function prompt_login() {
+    $("#login_form").submit(function () {
+        var username = $("#username").val();
+        var password = $("#password").val();
+        authenticate_user(username, password);
+        //don't refresh after submit
+        return false;
+    });
+}
+
+function authenticate_user(username, password) {
+    // test WS connection with credentials
+    if (window.WebSocket) {
+        client = Stomp.client(URL);
+        client.connect(username, password, handle_auth_success, handle_auth_failure);
+
+        // if success: tear it down and start over again
+        function handle_auth_success(frame) {
+            $("#prompt_box").hide();
+            draw_audrey();
+            draw_you();
+            setup_websocket(username, password);
+        }
+
+        function handle_auth_failure(error) {
+            $("#password").val('');
+            $("#error_message").show();
+        }
+    } else {
+        console.log("You're browser does not support WebSockets!");
+    }
 }
 
 function draw_audrey() {
     $("#audrey").append("<div id=audrey-dialog class=dialog></div>");
     $("#audrey").append("<div id=audrey-avatar></div>");
     $("#audrey-avatar").append("<img id=audrey-img src='img/idle.gif'>");
+    $("#audrey-dialog").text("Hello, I'm Audrey.");
 }
+
 function draw_you() {
     $("#you").append("<div id=you-avatar></div>");
     $("#you").append("<div id=you-dialog class=dialog contenteditable></div>");
@@ -24,7 +57,7 @@ function draw_you() {
 function submit_chat(text_input) {
     $("#you-dialog").empty();
     $("#audrey-dialog").empty();
-    submitAudreyChat(text_input);
+    publish_statement(text_input);
 }
 
 function handle_audrey_response(message) {

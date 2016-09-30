@@ -35,17 +35,17 @@ h1 {
 #audrey-dialog {
   font-family: cursive;
   font-size: 30px;
-  background-color: #ff99cc;
-  border-color: #cc3399;
+  background-color: #FF99CC;
+  border-color: #CC3399;
 }
 #audrey-avatar {
-  border: 7px ridge #cc3399;
+  border: 7px ridge #CC3399;
   border-radius: 10px;
   box-shadow: 10px 10px 5px #888888;
   height: 245px;
 }
 #you-dialog {
-  background-color: #d0d0d0;
+  background-color: #D0D0D0;
 }
 #you-avatar {
   border: 7px ridge black;
@@ -64,4 +64,12 @@ h1 {
 #you-img {
   height: 100%;
   width: auto;
+}
+#prompt_box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+#error_message {
+  color: #ff0000;
 }

@@ -1,10 +1,9 @@
 .PHONY: build run
 
-IMAGE=audrey-chat
+IMAGE=apollo-registrar
 VERSION=1.0.0
 FROM_IMAGE=$(shell grep FROM Dockerfile | cut -d " " -f 2)
-CONTAINER=$(IMAGE)
-CWD=$(shell pwd)
+CONTAINER=registrar
 
 build:
 	docker build -t $(IMAGE) .
@@ -12,20 +11,21 @@ build:
 
 run:
 	docker run -d \
-	-p 80:80 \
+	--link cortex-apollo \
 	--name $(CONTAINER) \
+	-v /var/run/docker.sock:/var/run/docker.sock \
 	$(IMAGE):$(VERSION)
 
-dev:
-	docker run -d \
-	-p 80:80 \
+shell:
+	docker run -it \
+	--link cortex-apollo \
 	--name $(CONTAINER) \
-	-v $(CWD):/var/www/html/audrey-chat \
-	$(IMAGE):$(VERSION)
+	-v /var/run/docker.sock:/var/run/docker.sock \
+	$(IMAGE):$(VERSION) \
+	/bin/bash
 
 clean:
 	docker rm -f $(CONTAINER)
 
 update:
-	docker pull $(FROM_IMAGE)
 	$(MAKE) build

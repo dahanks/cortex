@@ -28,12 +28,10 @@
 
   <log_category console="console" security="security" connection="connection" audit="audit"/>
 
-  
   <authentication domain="apollo"/>
   <!-- Give admins full access -->
   <access_rule allow="admins" action="*"/>
   <access_rule allow="*" action="connect" kind="connector"/>
-  
 
   <virtual_host id="apollo_broker">
     <!--
@@ -47,14 +45,12 @@
     <!-- Uncomment to disable security for the virtual host -->
     <!-- <authentication enabled="false"/> -->
 
-    <!-- Uncomment to disable security for the virtual host -->
-    <!-- <authentication enabled="false"/> -->
+    <!-- Users can connect to anything but the registration queue -->
+    <access_rule deny="users" id="audrey.register" kind="*" action="receive consume destroy"/>
     <access_rule allow="users" action="connect create destroy send receive consume"/>
-    
 
     <!-- You can delete this element if you want to disable persistence for this virtual host -->
     <leveldb_store directory="${apollo.base}/data"/>
-    
 
   </virtual_host>
 

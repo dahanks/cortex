@@ -8,6 +8,7 @@ ENV APOLLO apache-apollo-$APOLLO_VERSION
 ENV APOLLO_TAR $APOLLO-unix-distro.tar.gz
 ENV APOLLO_HOME /opt/apollo
 ENV APOLLO_USER apollo
+ENV APOLLO_ENCRYPTION_PASSWORD youshouldchangethis
 
 RUN \
     curl -s -O http://archive.apache.org/dist/activemq/activemq-apollo/$APOLLO_VERSION/$APOLLO_TAR && \
@@ -23,8 +24,8 @@ ENV APOLLO_BROKER /opt/apollo-broker
 RUN $APOLLO_HOME/bin/apollo create $APOLLO_BROKER
 
 COPY apollo.xml $APOLLO_BROKER/etc/
-
 COPY users.properties $APOLLO_BROKER/etc/
+COPY groups.properties $APOLLO_BROKER/etc/
 
 EXPOSE 61613 61623
 

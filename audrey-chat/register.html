@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+  <title>Register for Audrey Chat</title>
+  <head>
+    <link type="text/css" rel="stylesheet" href="css/audrey-chat.css">
+  </head>
+  <body>
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+
+    <script src="js/stomp.js"></script>
+    <script src="js/register.js"></script>
+    <div id="header">
+      <h1>Register for Audrey Chat</h1>
+    </div>
+    <div id="prompt_box">
+      <form id="register_form">
+        <div>
+          <input id="username" type="text" placeholder="Username" required>
+        </div>
+        <div>
+          <input id="auth_code" type="password" placeholder="Authentication Code" required>
+        </div>
+        <div>
+          <input id="password" class="validated" type="password" placeholder="Enter new password" required>
+        </div>
+        <div>
+          <input id="confirm_password" class="validated" type="password" placeholder="Confirm new password" required>
+        </div>
+        <div>
+          <input type="submit" value="Submit">
+        </div>
+      </form>
+      <div>
+        <p id="error_message" style="display:none">Invalid Authentication Code!</p>
+      </div>
+    </div>
+  </body>
+</html>
