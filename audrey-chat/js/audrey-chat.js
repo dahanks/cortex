@@ -20,7 +20,7 @@ function authenticate_user(username, password) {
 
         // if success: tear it down and start over again
         function handle_auth_success(frame) {
-            $("#prompt_box").hide();
+            $(".prompt_box").hide();
             draw_audrey();
             draw_you();
             setup_websocket(username, password);

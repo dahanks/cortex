@@ -12,22 +12,41 @@
     <div id="header">
       <h1>Register for Audrey Chat</h1>
     </div>
-    <div id="prompt_box">
+    <div id="register_box" class="prompt_box">
+      <div class="letter_buffer"></div>
       <form id="register_form">
+        <div class="intro">
+          Dear Audrey,
+        </div>
+        <br/>
         <div>
-          <input id="username" type="text" placeholder="Username" required>
+          Hello, my name is <input id="username" type="text" placeholder="Username" required> .
+        </div>
+        <br/>
+        <div>
+          I'm looking forward to speaking with you,<br/>
+          and I was told to let you know <input id="auth_code" type="password" placeholder="Authentication Code" required> .
+        </div>
+        <br/>
+        <div>
+          My password will be <input id="password" class="validated" type="password" placeholder="Enter new password" required> .
         </div>
         <div>
-          <input id="auth_code" type="password" placeholder="Authentication Code" required>
+          Once again, that's <input id="confirm_password" class="validated" type="password" placeholder="Confirm new password" required> .
         </div>
+        <br/>
         <div>
-          <input id="password" class="validated" type="password" placeholder="Enter new password" required>
+          Talk to you soon.
         </div>
+        <br/>
         <div>
-          <input id="confirm_password" class="validated" type="password" placeholder="Confirm new password" required>
+          Sincerely,
         </div>
-        <div>
-          <input type="submit" value="Submit">
+        <div id="mirror_username">
+          &nbsp
+        </div>
+        <div id="send_button" >
+          <input type="submit" value="Register">
         </div>
       </form>
       <div>
