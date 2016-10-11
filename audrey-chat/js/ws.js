@@ -1,11 +1,18 @@
 var URL = "ws://" + location.host + ":61623";
 var WETWARE_TOPIC = "/queue/wetware.nlp";
 
+var partition;
 var client;
 var reply_topics = [];
 
 function setup_websocket(username, password) {
     if (window.WebSocket) {
+        /* This is intentionally insecure; we do not (yet) promise that users cannot
+           access other users' partitions.  Authentication will be done elsewhere.
+           Admin will have access to all partitions for the sake of demonstration. */
+        if (username !== 'admin') {
+            partition = username;
+        }
         client = Stomp.client(URL);
         client.connect(username, password, null, function(error) {
             //go back to login on back connection/timeout
@@ -32,8 +39,11 @@ function on_message(message) {
     }
 }
 
-function publish_statement(statement) {
+function publish_statement(statement, partition) {
     var json_data = {'statements': [statement]}
+    if (partition) {
+        json_data['partition'] = partition;
+    }
     var json_data_str = JSON.stringify(json_data);
     var reply_to_topic = '/temp-queue/' + guid();
     var headers = {'reply-to': reply_to_topic};

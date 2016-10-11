@@ -22,7 +22,7 @@ function authenticate_user(username, password) {
         function handle_auth_success(frame) {
             $(".prompt_box").hide();
             draw_audrey();
-            draw_you();
+            draw_you(username);
             setup_websocket(username, password);
         }
 
@@ -42,22 +42,22 @@ function draw_audrey() {
     $("#audrey-dialog").text("Hello, I'm Audrey.");
 }
 
-function draw_you() {
+function draw_you(username) {
     $("#you").append("<div id=you-avatar></div>");
     $("#you").append("<div id=you-dialog class=dialog contenteditable></div>");
     $("#you-avatar").append("<img id=you-img src='img/you.png'>");
     $("#you-dialog").keydown(function(e) {
         var key = e.which;
         if (key == 13) {
-            submit_chat($(this).text());
+            submit_chat($(this).text(), partition);
         }
     });
 }
 
-function submit_chat(text_input) {
+function submit_chat(text_input, partition) {
     $("#you-dialog").empty();
     $("#audrey-dialog").empty();
-    publish_statement(text_input);
+    publish_statement(text_input, partition);
 }
 
 function handle_audrey_response(message) {
