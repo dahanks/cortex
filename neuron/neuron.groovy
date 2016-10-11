@@ -17,6 +17,8 @@ public class Neuron {
     public static final String APOLLO_PASSWORD = "password";
     public static final String INPUT_DESTINATION = "/queue/neuron.operation";
 
+    public static final String PARTITION_KEY = "_partition";
+
     public StompConnection connection;
     public graph;
     public g;
@@ -34,21 +36,21 @@ public class Neuron {
         connection.subscribe(INPUT_DESTINATION, Subscribe.AckModeValues.CLIENT);
     }
 
-    public executeStatement(statement) {
+    public executeStatement(statement, traversal) {
         def api = statement['api'];
         if (statement['fxns'].size() < 1) {
             logging.warn("Received Neuron statement with no function calls");
             return [];
         } else if (api == "blueprints") {
-            return executeBlueprintsStatement(statement);
+            return executeBlueprintsStatement(statement, traversal);
         } else if (api == "gremlin") {
-            return executeGremlinStatement(statement);
+            return executeGremlinStatement(statement, traversal);
         } else if (api == "neuron") {
-            return executeNeuronStatement(statement);
+            return executeNeuronStatement(statement, traversal);
         }
     }
 
-    public executeNeuronStatement(statement) {
+    public executeNeuronStatement(statement, traversal) {
     /*This will return the result of whatever the LAST function is, and nothing
       in between.  And that's normally what we want; otherwise, you should
       divide the functions into different statements. */
@@ -57,41 +59,41 @@ public class Neuron {
         fxns.each {
             switch (it['fxn']) {
             case "addVertex":
-                retVal = neuronAddVertex(it['name']);
+                retVal = neuronAddVertex(it['name'], traversal);
                 break;
             case "addVertexProperty":
-                retVal = neuronAddVertexProperty(it['name'],it['property'],it['value']);
+                retVal = neuronAddVertexProperty(it['name'], it['property'], it['value'], traversal);
                 break;
             case "getVertexProperty":
-                retVal = neuronGetVertexProperty(it['name'],it['property']);
+                retVal = neuronGetVertexProperty(it['name'], it['property'], traversal);
                 break;
             case "addEdge":
-                retVal = neuronAddEdge(it['fromVertex'],it['toVertex'],it['label']);
+                retVal = neuronAddEdge(it['fromVertex'], it['toVertex'], it['label'], traversal);
                 break;
             case "getVerticesTypeGeoWithin":
-                retVal = neuronGetVerticesTypeGeoWithin(it['type'],it['property'],it['geoshape']);
+                retVal = neuronGetVerticesTypeGeoWithin(it['type'], it['property'], it['geoshape'], traversal);
                 break;
             }
         }
         return retVal;
     }
 
-    public neuronAddVertex(name) {
-        def vertex_iter = g.V().has("name", name);
+    public neuronAddVertex(name, traversal) {
+        def vertex_iter = traversal.V().has("name", name);
         if (vertex_iter) {
             return vertex_iter.next();
         } else {
-            return graph.addVertex("name", name);
+            return traversal.addV("name", name).next();
         }
     }
 
-    public neuronAddVertexProperty(name, key, value) {
+    public neuronAddVertexProperty(name, key, value, traversal) {
     /*The only types supported in Neuron will be:
       int, double, string, and Geoshape (using list [])
       Actual lists should be handled by Neuron libraries as
       multiple property values under the same property key.
     */
-        def vertex = neuronAddVertex(name);
+        def vertex = neuronAddVertex(name, traversal);
         println "Adding property: " + key;
         switch(value.getClass()) {
         case String:
@@ -128,8 +130,8 @@ public class Neuron {
         return vertex;
     }
 
-    public neuronGetVertexProperty(name, key) {
-        def prop_iter = g.V().has("name", name).values(key);
+    public neuronGetVertexProperty(name, key, traversal) {
+        def prop_iter = traversal.V().has("name", name).values(key);
         if (prop_iter) {
             return prop_iter.next();
         } else {
@@ -137,11 +139,11 @@ public class Neuron {
         }
     }
 
-    public neuronAddEdge(fromName, toName, label) {
+    public neuronAddEdge(fromName, toName, label, traversal) {
     //Adding an Edge will add the Vertices as well
-        def fromVertex = neuronAddVertex(fromName);
-        def toVertex = neuronAddVertex(toName);
-        def edge_iter = g.V(fromVertex).out(label).has("name", toName);
+        def fromVertex = neuronAddVertex(fromName, traversal);
+        def toVertex = neuronAddVertex(toName, traversal);
+        def edge_iter = traversal.V(fromVertex).out(label).has("name", toName);
         if (edge_iter) {
             return edge_iter.next();
         } else {
@@ -149,17 +151,17 @@ public class Neuron {
         }
     }
 
-    public neuronGetVerticesTypeGeoWithin(type, property, geoshape) {
+    public neuronGetVerticesTypeGeoWithin(type, property, geoshape, traversal) {
         if (geoshape.size == 3) {
-            return g.V().has("type", type).has(property, geoWithin(Geoshape.circle(geoshape[0],geoshape[1],geoshape[2]))).valueMap().toList();
+            return traversal.V().has("type", type).has(property, geoWithin(Geoshape.circle(geoshape[0],geoshape[1],geoshape[2]))).valueMap().toList();
         } else if (geoshape.size == 4) {
-            return g.V().has("type", type).has(property, geoWithin(Geoshape.box(geoshape[0],geoshape[1],geoshape[2],geoshape[3]))).valueMap().toList();
+            return traversal.V().has("type", type).has(property, geoWithin(Geoshape.box(geoshape[0],geoshape[1],geoshape[2],geoshape[3]))).valueMap().toList();
         } else {
             return "";
         }
     }
 
-    public executeBlueprintsStatement(statement) {
+    public executeBlueprintsStatement(statement, traversal) {
         def fxns = statement['fxns'];
         if (fxns.size() > 1) {
             logging.warn("Neuron can currently only process one Blueprints function at a time");
@@ -167,8 +169,8 @@ public class Neuron {
         } else {
             def fxn = fxns[0];
             if (fxn['fxn'] == "addEdge") {
-                def fromVertex = executeGremlinStatement(fxn['fromVertex']);
-                def toVertex = executeGremlinStatement(fxn['toVertex']);
+                def fromVertex = executeGremlinStatement(fxn['fromVertex'], traversal);
+                def toVertex = executeGremlinStatement(fxn['toVertex'], traversal);
                 def label = fxn['label']
                 def properties = fxn['properties'];
                 return fromVertex.addEdge(label, toVertex, *properties);
@@ -178,30 +180,30 @@ public class Neuron {
         }
     }
 
-    public executeGremlinStatement(statement) {
+    public executeGremlinStatement(statement, traversal) {
         def fxns = statement['fxns'];
         if (fxns.size() > 10) {
             logging.warn("Neuron can not process Gremlin operations with greater than 10 linked calls");
         } else if (fxns.size() == 1) {
-            return g."${fxns[0]['fxn']}"(*fxns[0]['args']);
+            return traversal."${fxns[0]['fxn']}"(*fxns[0]['args']);
         } else if (fxns.size() == 2) {
-            return g."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args']);
+            return traversal."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args']);
         } else if (fxns.size() == 3) {
-            return g."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args'])."${fxns[2]['fxn']}"(*fxns[2]['args']);
+            return traversal."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args'])."${fxns[2]['fxn']}"(*fxns[2]['args']);
         } else if (fxns.size() == 4) {
-            return g."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args'])."${fxns[2]['fxn']}"(*fxns[2]['args'])."${fxns[3]['fxn']}"(*fxns[3]['args']);
+            return traversal."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args'])."${fxns[2]['fxn']}"(*fxns[2]['args'])."${fxns[3]['fxn']}"(*fxns[3]['args']);
         } else if (fxns.size() == 5) {
-            return g."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args'])."${fxns[2]['fxn']}"(*fxns[2]['args'])."${fxns[3]['fxn']}"(*fxns[3]['args'])."${fxns[4]['fxn']}"(*fxns[4]['args']);
+            return traversal."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args'])."${fxns[2]['fxn']}"(*fxns[2]['args'])."${fxns[3]['fxn']}"(*fxns[3]['args'])."${fxns[4]['fxn']}"(*fxns[4]['args']);
         } else if (fxns.size() == 6) {
-            return g."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args'])."${fxns[2]['fxn']}"(*fxns[2]['args'])."${fxns[3]['fxn']}"(*fxns[3]['args'])."${fxns[4]['fxn']}"(*fxns[4]['args'])."${fxns[5]['fxn']}"(*fxns[5]['args']);
+            return traversal."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args'])."${fxns[2]['fxn']}"(*fxns[2]['args'])."${fxns[3]['fxn']}"(*fxns[3]['args'])."${fxns[4]['fxn']}"(*fxns[4]['args'])."${fxns[5]['fxn']}"(*fxns[5]['args']);
         } else if (fxns.size() == 7) {
-            return g."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args'])."${fxns[2]['fxn']}"(*fxns[2]['args'])."${fxns[3]['fxn']}"(*fxns[3]['args'])."${fxns[4]['fxn']}"(*fxns[4]['args'])."${fxns[5]['fxn']}"(*fxns[5]['args'])."${fxns[6]['fxn']}"(*fxns[6]['args']);
+            return traversal."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args'])."${fxns[2]['fxn']}"(*fxns[2]['args'])."${fxns[3]['fxn']}"(*fxns[3]['args'])."${fxns[4]['fxn']}"(*fxns[4]['args'])."${fxns[5]['fxn']}"(*fxns[5]['args'])."${fxns[6]['fxn']}"(*fxns[6]['args']);
         } else if (fxns.size() == 8) {
-            return g."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args'])."${fxns[2]['fxn']}"(*fxns[2]['args'])."${fxns[3]['fxn']}"(*fxns[3]['args'])."${fxns[4]['fxn']}"(*fxns[4]['args'])."${fxns[5]['fxn']}"(*fxns[5]['args'])."${fxns[6]['fxn']}"(*fxns[6]['args'])."${fxns[7]['fxn']}"(*fxns[7]['args']);
+            return traversal."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args'])."${fxns[2]['fxn']}"(*fxns[2]['args'])."${fxns[3]['fxn']}"(*fxns[3]['args'])."${fxns[4]['fxn']}"(*fxns[4]['args'])."${fxns[5]['fxn']}"(*fxns[5]['args'])."${fxns[6]['fxn']}"(*fxns[6]['args'])."${fxns[7]['fxn']}"(*fxns[7]['args']);
         } else if (fxns.size() == 9) {
-            return g."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args'])."${fxns[2]['fxn']}"(*fxns[2]['args'])."${fxns[3]['fxn']}"(*fxns[3]['args'])."${fxns[4]['fxn']}"(*fxns[4]['args'])."${fxns[5]['fxn']}"(*fxns[5]['args'])."${fxns[6]['fxn']}"(*fxns[6]['args'])."${fxns[7]['fxn']}"(*fxns[7]['args'])."${fxns[8]['fxn']}"(*fxns[8]['args']);
+            return traversal."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args'])."${fxns[2]['fxn']}"(*fxns[2]['args'])."${fxns[3]['fxn']}"(*fxns[3]['args'])."${fxns[4]['fxn']}"(*fxns[4]['args'])."${fxns[5]['fxn']}"(*fxns[5]['args'])."${fxns[6]['fxn']}"(*fxns[6]['args'])."${fxns[7]['fxn']}"(*fxns[7]['args'])."${fxns[8]['fxn']}"(*fxns[8]['args']);
         } else if (fxns.size() == 10) {
-            return g."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args'])."${fxns[2]['fxn']}"(*fxns[2]['args'])."${fxns[3]['fxn']}"(*fxns[3]['args'])."${fxns[4]['fxn']}"(*fxns[4]['args'])."${fxns[5]['fxn']}"(*fxns[5]['args'])."${fxns[6]['fxn']}"(*fxns[6]['args'])."${fxns[7]['fxn']}"(*fxns[7]['args'])."${fxns[8]['fxn']}"(*fxns[8]['args'])."${fxns[9]['fxn']}"(*fxns[9]['args']);
+            return traversal."${fxns[0]['fxn']}"(*fxns[0]['args'])."${fxns[1]['fxn']}"(*fxns[1]['args'])."${fxns[2]['fxn']}"(*fxns[2]['args'])."${fxns[3]['fxn']}"(*fxns[3]['args'])."${fxns[4]['fxn']}"(*fxns[4]['args'])."${fxns[5]['fxn']}"(*fxns[5]['args'])."${fxns[6]['fxn']}"(*fxns[6]['args'])."${fxns[7]['fxn']}"(*fxns[7]['args'])."${fxns[8]['fxn']}"(*fxns[8]['args'])."${fxns[9]['fxn']}"(*fxns[9]['args']);
         }
     }
 
@@ -214,13 +216,21 @@ public class Neuron {
             connection.ack(frame);
             def parser = new JsonSlurper();
             def message = parser.parseText(frame.getBody());
+
+            def traversal = g;
+            if (message['partition']) {
+                def partition = message['partition'];
+                def strategy = PartitionStrategy.build().partitionKey(PARTITION_KEY).writePartition(partition).addReadPartition(partition).create();
+                traversal = GraphTraversalSource.build().with(strategy).create(graph);
+            }
+
             //return the result of each Statement (but not of each function)
             def reply = ["statements": []];
             for (statement in message['statements']) {
                 println statement;
                 def result;
                 try {
-                    result = executeStatement(statement);
+                    result = executeStatement(statement, traversal);
                     if (statement["api"] == "gremlin"){
                         result = result.toList();
                     }
