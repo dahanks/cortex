@@ -29,6 +29,12 @@ class WetwareWorker(Worker):
 
     def process_nlp_statement(self, message, transaction):
         statements = message['statements']
+
+        # no partition will equate to the entire graph
+        partition = None
+        if 'partition' in message:
+            partition = message['partition']
+
         if len(statements) > 1 and transaction:
             self.reply(Statements("I can't possibly respond to all that at once!"), transaction)
         else:
@@ -36,11 +42,11 @@ class WetwareWorker(Worker):
             # or multiple statements without expecting a reply
             for statement in statements:
                 if '?' in statement:
-                    self.parse_interrogative_statement(statement, transaction)
+                    self.parse_interrogative_statement(statement, transaction, partition)
                 else:
-                    self.parse_indicative_statement(statement, transaction)
+                    self.parse_indicative_statement(statement, transaction, partition)
 
-    def parse_interrogative_statement(self, statement, transaction):
+    def parse_interrogative_statement(self, statement, transaction, partition=None):
         try:
             words = statement.split(' ')
             statements = None
@@ -69,6 +75,9 @@ class WetwareWorker(Worker):
             elif transaction:
                 self.reply(Statements("I'm terribly sorry, but I don't understand the question."), transaction)
                 return
+
+            if partition and statements:
+                statements['partition'] = partition
 
             if statements and transaction:
                 self.publish(statements, callback=callback, context=context, transaction=transaction)
@@ -143,7 +152,7 @@ class WetwareWorker(Worker):
         subj = words[2].strip()[:-1]
         return get_vertex_object(subj)
 
-    def parse_indicative_statement(self, statement, transaction):
+    def parse_indicative_statement(self, statement, transaction, partition=None):
         try:
             words = statement.split(' ')
             statements = None
@@ -156,6 +165,9 @@ class WetwareWorker(Worker):
             elif transaction:
                 self.reply(Statements("I'm having trouble understanding what it is you want to say..."), transaction)
                 return
+
+            if partition and statements:
+                statements['partition'] = partition
 
             if statements and transaction:
                 self.publish(statements, callback=self.acknowledge_response, transaction=transaction)
@@ -286,7 +298,7 @@ class WetwareWorker(Worker):
             else:
                 reply_str = "{0} ".format(vertex['name'])
                 for prop in vertex:
-                    if prop == 'name':
+                    if prop in ('name', '_partition'):
                         continue
                     elif vertex[prop] == "true":
                         reply_str += "is {0}; ".format(prop)
