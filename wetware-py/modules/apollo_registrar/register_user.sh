@@ -7,7 +7,7 @@ BASE='/opt/apollo-broker'
 pass=`$EXEC $BASE/bin/apollo-broker encrypt $2`
 
 #Delete existing/add user
-$EXEC sed -i /$1/d $BASE/etc/users.properties
+$EXEC sed -i /^$1=/d $BASE/etc/users.properties
 $EXEC bash -c "echo \"$1=$pass\" >> $BASE/etc/users.properties"
 
 #Grab existing users
