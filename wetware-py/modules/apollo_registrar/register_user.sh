@@ -13,12 +13,8 @@ $EXEC bash -c "echo \"$1=$pass\" >> $BASE/etc/users.properties"
 #Grab existing users
 users=`$EXEC grep ^users= $BASE/etc/groups.properties`
 
-#Separate statements because the variable expansion isn't working with regex operators
-exists1=`$EXEC grep -F "=$1|" $BASE/etc/groups.properties`
-exists2=`$EXEC grep -F "|$1|" $BASE/etc/groups.properties`
-
 #Add new user to group if not already there
-if [[ -z $exists1 ]] && [[ -z $exists2 ]]; then
+if [[ -z `$EXEC grep "[=|]$1|" $BASE/etc/groups.properties` ]]; then
     $EXEC sed -i /users/d $BASE/etc/groups.properties && \
     $EXEC bash -c "echo \"$users$1|\" >> $BASE/etc/groups.properties"
 fi
