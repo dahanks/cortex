@@ -11,7 +11,7 @@ $EXEC sed -i /^$1=/d $BASE/etc/users.properties
 $EXEC bash -c "echo \"$1=$pass\" >> $BASE/etc/users.properties"
 
 #Grab existing users
-users=`$EXEC grep -F users $BASE/etc/groups.properties`
+users=`$EXEC grep ^users= $BASE/etc/groups.properties`
 
 #Separate statements because the variable expansion isn't working with regex operators
 exists1=`$EXEC grep -F "=$1|" $BASE/etc/groups.properties`
