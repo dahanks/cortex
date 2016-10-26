@@ -36,13 +36,27 @@ function connect_callback(frame) {
         'password': conf
     }
     var json_data_str = JSON.stringify(json_data);
-    client.send(REGISTER_QUEUE, null, json_data_str);
-    window.location = "/audrey-chat";
+    var reply_to_topic = '/temp-queue/' + user;
+    client.subscribe(reply_to_topic, on_message);
+    client.send(REGISTER_QUEUE, {'reply-to': reply_to_topic}, json_data_str);
+
+    function on_message(message) {
+        try {
+            var body = JSON.parse(message['body']);
+            if (body.error !== undefined) {
+                $("#error_message").html(body.error).show();
+            } else {
+                window.location = "/audrey-chat";
+            }
+        } catch (err) {
+            console.log("Malformed message response");
+        }
+    }
 }
 
 function error_callback(error) {
     $("#auth_code").val('');
-    $("#error_message").show();
+    $("#error_message").html("Invalid authentication code").show();
 }
 
 function validate_passwords() {
