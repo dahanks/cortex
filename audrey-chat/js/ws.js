@@ -3,7 +3,6 @@ var WETWARE_TOPIC = "/queue/wetware.nlp";
 
 var partition;
 var client;
-var reply_topics = [];
 
 function setup_websocket(username, password) {
     if (window.WebSocket) {
@@ -47,7 +46,6 @@ function publish_statement(statement, partition) {
     var json_data_str = JSON.stringify(json_data);
     var reply_to_topic = '/temp-queue/' + guid();
     var headers = {'reply-to': reply_to_topic};
-    reply_topics.push(reply_to_topic);
     client.subscribe(reply_to_topic, on_message);
     client.send(WETWARE_TOPIC, headers, json_data_str);
 }

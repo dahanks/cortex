@@ -19,7 +19,12 @@ class Registrar(Worker):
             user = message['username']
             pw = message['password']
             logging.info("Registering user: {0}".format(user))
-            call(['/bin/bash', 'register_user.sh', user, pw])
+            exit_code = call(['/bin/bash', 'register_user.sh', user, pw])
+            #don't forget bash is error == 1
+            if exit_code:
+                self.reply({'error':"Username already registered"})
+            else:
+                self.reply({'msg':"Username registered"})
 
 def main():
     logging.basicConfig(level=logging.DEBUG)
