@@ -232,7 +232,8 @@ class MySpecialWorker(Worker):
         self.lm.post('HUMAN','LEG', 1,0.99,0)
         self.lm.post('HUMAN','HUMAN_TORSO', 1,0.99,0)
         self.lm.post('HUMAN','HUMAN_HEAD', 1,0.99,0)
-        self.lm.post('SUSPECT','HUMAN', 1,0.99,0)
+
+        self.lm.post('911_SUSPECT','HUMAN', 1,0.99,0)
         self.lm.post('SHOOTER','HUMAN', 1,0.99,0)
         self.lm.post('SHOOTER','GUN', 1,0.99,0)
         self.lm.post('SHOOTER','HUMAN_THREAT', 1,0.99,0)
@@ -281,12 +282,12 @@ class MySpecialWorker(Worker):
             forget(mem,'new') || post(mem,'SHOOTER','old',1,0.99,0);
 
           % 911 response
-          queryNAL1(mem,'SUSPECT','new') ~>
+          queryNAL1(mem,'911_SUSPECT','new') ~>
             sendMsg(comm,'police:deploy_cruiser_msg') ||
             sendMsg(comm,'interface:Query_Address_Info') ||
             sendMsg(comm,'interface:Subscribe_social_media') ||
             forget(mem,'new') ||
-            post(mem,'SUSPECT','old',1,0.99,0);
+            post(mem,'911_SUSPECT','old',1,0.99,0);
             
           % building message
           queryNAL1(mem,'BUILDING','new') ~>
