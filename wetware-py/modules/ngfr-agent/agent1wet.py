@@ -308,7 +308,6 @@ class MySpecialWorker(Worker):
         self.do_my_special_work(message)
 
     def do_my_special_work(self,message):
-        logging.debug(chant)
         consume(message,self.lm)
         self.do_my_trp(self.lm,self)
 
