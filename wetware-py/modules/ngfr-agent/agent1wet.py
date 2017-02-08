@@ -253,39 +253,39 @@ class MySpecialWorker(Worker):
           queryNAL1(mem,'FIRE','new') & queryNAL1(mem,'SHOOTER','old') & queryNAL1(mem,'HAZARDS:CHEMICALS','old') ~>
             sendMsg(comm,'fireman:shooter_alert') ||
             sendMsg(comm,'fireman:chemical_hazards') ||
-            sendMsg(comm,'fireman:deploy_message') ||
+            sendMsg(comm,'fireman:suggest_deploy_team') ||
             forget(mem,'new') || post(mem,'FIRE','old',1,0.99,0);
         
           queryNAL1(mem,'FIRE','new') & queryNAL1(mem,'HAZARDS:CHEMICALS','old') ~>
             sendMsg(comm,'fireman:chemical_hazards') ||
-            sendMsg(comm,'fireman:deploy_message') ||
+            sendMsg(comm,'fireman:suggest_deploy_team') ||
             forget(mem,'new') || post(mem,'FIRE','old',1,0.99,0);
         
           queryNAL1(mem,'FIRE','new') & queryNAL1(mem,'SHOOTER','old') ~>
             sendMsg(comm,'fireman:shooter_alert') ||
-            sendMsg(comm,'fireman:deploy_message') ||
+            sendMsg(comm,'fireman:suggest_deploy_team') ||
             forget(mem,'new') || post(mem,'FIRE','old',1,0.99,0);
         
           queryNAL1(mem,'FIRE','new') ~>
-            sendMsg(comm,'fireman:deploy_message') ||
+            sendMsg(comm,'fireman:suggest_deploy_team') ||
             forget(mem,'new') || post(mem,'FIRE','old',1,0.99,0);
         
           % picture analytic response
           queryNAL1(mem,'HUMAN+WEAPON','new') ~>
-            sendMsg(comm,'interface:shooterPicture') ||
+            sendMsg(comm,'police:suggest_deploy_team') ||
             forget(mem,'new') || post(mem,'HUMAN+WEAPON','old',1,0.99,0);
         
           % tweat response
           queryNAL1(mem,'SHOOTER','new') ~>
-            sendMsg(comm,'interface:camera_activate_msg') ||
-            sendMsg(comm,'police:deploy_team_msg') ||
+            sendMsg(comm,'interface:camera_activation_msg') ||
             forget(mem,'new') || post(mem,'SHOOTER','old',1,0.99,0);
 
           % 911 response
           queryNAL1(mem,'911_SUSPECT','new') ~>
-            sendMsg(comm,'police:deploy_cruiser_msg') ||
             sendMsg(comm,'interface:Query_Address_Info') ||
+            sendMsg(comm,'interface:Query_Geospacial_Info') ||
             sendMsg(comm,'interface:Subscribe_social_media') ||
+            sendMsg(comm,'911_call_frequency:occasional') ||
             forget(mem,'new') ||
             post(mem,'911_SUSPECT','old',1,0.99,0);
             
