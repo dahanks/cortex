@@ -257,7 +257,7 @@ class MySpecialWorker(Worker):
             forget(mem,'new') || post(mem,'FIRE','old',1,0.99,0);
         
           queryNAL1(mem,'FIRE','new') & queryNAL1(mem,'HAZARDS:CHEMICALS','old') ~>
-            sendMsg(comm,'fireman:chemical_hazards') ||
+            sendMsg(comm,'fireman:suggest_hazmat_team') ||
             sendMsg(comm,'fireman:suggest_deploy_team') ||
             forget(mem,'new') || post(mem,'FIRE','old',1,0.99,0);
         
