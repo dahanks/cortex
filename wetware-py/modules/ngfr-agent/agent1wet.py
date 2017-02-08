@@ -139,12 +139,12 @@ def consume(assume,mem):
     for a in [x['_attributes'] for x in assume['Features']['Feature_Value']]:
         obj ="obj%s"%a['Object_ID']
         if obj not in objects: objects += [obj]
-        if a['Value'] in ['True', 'TRUE']:
-           mem.post(obj,a['Name'],float(a['Conf']),0.99,float(a['Time']))
-        elif a['Name'] == 'IS_A':
-           mem.post(obj,a['Value'],float(a['Conf']),0.99,float(a['Time']))
+        if a['Value'].upper() == 'TRUE':
+           mem.post(obj,a['Name'].upper(),float(a['Conf']),0.99,float(a['Time']))
+        elif a['Name'].upper() == 'IS_A':
+           mem.post(obj,a['Value'].upper(),float(a['Conf']),0.99,float(a['Time']))
         else:
-           mem.post(obj,"%s:%s"%(a['Name'],a['Value']),float(a['Conf']),0.99,float(a['Time']))
+           mem.post(obj,"%s:%s"%(a['Name'].upper(),a['Value'].upper()),float(a['Conf']),0.99,float(a['Time']))
     for o in objects:
         mem.post(o,'new',1.0,0.99,0)
 
@@ -232,15 +232,16 @@ class MySpecialWorker(Worker):
         self.lm.post('HUMAN','LEG', 1,0.99,0)
         self.lm.post('HUMAN','HUMAN_TORSO', 1,0.99,0)
         self.lm.post('HUMAN','HUMAN_HEAD', 1,0.99,0)
-        self.lm.post('Suspect','HUMAN', 1,0.99,0)
-        self.lm.post('Shooter','HUMAN', 1,0.99,0)
-        self.lm.post('Shooter','GUN', 1,0.99,0)
-        self.lm.post('Shooter','HUMAN_THREAT', 1,0.99,0)
+
+        self.lm.post('911_SUSPECT','HUMAN', 1,0.99,0)
+        self.lm.post('SHOOTER','HUMAN', 1,0.99,0)
+        self.lm.post('SHOOTER','GUN', 1,0.99,0)
+        self.lm.post('SHOOTER','HUMAN_THREAT', 1,0.99,0)
     
         exec(transform('''
         incidentPolicy(mem,comm) =
           % arrival response
-          queryNAL1(mem,'ARRIVAL','new') & queryNAL1(mem,'Shooter','old') ~>
+          queryNAL1(mem,'ARRIVAL','new') & queryNAL1(mem,'SHOOTER','old') ~>
             sendMsg(comm,'arrival:shooter_alert') ||
             forget(mem,'new');
         
@@ -249,7 +250,7 @@ class MySpecialWorker(Worker):
             forget(mem,'new');
         
           % fire responses
-          queryNAL1(mem,'FIRE','new') & queryNAL1(mem,'Shooter','old') & queryNAL1(mem,'HAZARDS:CHEMICALS','old') ~>
+          queryNAL1(mem,'FIRE','new') & queryNAL1(mem,'SHOOTER','old') & queryNAL1(mem,'HAZARDS:CHEMICALS','old') ~>
             sendMsg(comm,'fireman:shooter_alert') ||
             sendMsg(comm,'fireman:chemical_hazards') ||
             sendMsg(comm,'fireman:deploy_message') ||
@@ -260,7 +261,7 @@ class MySpecialWorker(Worker):
             sendMsg(comm,'fireman:deploy_message') ||
             forget(mem,'new') || post(mem,'FIRE','old',1,0.99,0);
         
-          queryNAL1(mem,'FIRE','new') & queryNAL1(mem,'Shooter','old') ~>
+          queryNAL1(mem,'FIRE','new') & queryNAL1(mem,'SHOOTER','old') ~>
             sendMsg(comm,'fireman:shooter_alert') ||
             sendMsg(comm,'fireman:deploy_message') ||
             forget(mem,'new') || post(mem,'FIRE','old',1,0.99,0);
@@ -275,18 +276,18 @@ class MySpecialWorker(Worker):
             forget(mem,'new') || post(mem,'HUMAN+WEAPON','old',1,0.99,0);
         
           % tweat response
-          queryNAL1(mem,'Shooter','new') ~>
+          queryNAL1(mem,'SHOOTER','new') ~>
             sendMsg(comm,'interface:camera_activate_msg') ||
             sendMsg(comm,'police:deploy_team_msg') ||
-            forget(mem,'new') || post(mem,'Shooter','old',1,0.99,0);
+            forget(mem,'new') || post(mem,'SHOOTER','old',1,0.99,0);
 
           % 911 response
-          queryNAL1(mem,'SUSPECT','new') ~>
+          queryNAL1(mem,'911_SUSPECT','new') ~>
             sendMsg(comm,'police:deploy_cruiser_msg') ||
             sendMsg(comm,'interface:Query_Address_Info') ||
             sendMsg(comm,'interface:Subscribe_social_media') ||
             forget(mem,'new') ||
-            post(mem,'SUSPECT','old',1,0.99,0);
+            post(mem,'911_SUSPECT','old',1,0.99,0);
             
           % building message
           queryNAL1(mem,'BUILDING','new') ~>
