@@ -136,15 +136,16 @@ def queryNAL1(memory,src,dst):
 
 def consume(assume,mem):
     objects = []
-    for a in [x['_attributes'] for x in assume['Features']['Feature_Value']]:
-        obj ="obj%s"%a['Object_ID']
-        if obj not in objects: objects += [obj]
-        if a['Value'].upper() == 'TRUE':
-           mem.post(obj,a['Name'].upper(),float(a['Conf']),0.99,float(a['Time']))
-        elif a['Name'].upper() == 'IS_A':
-           mem.post(obj,a['Value'].upper(),float(a['Conf']),0.99,float(a['Time']))
-        else:
-           mem.post(obj,"%s:%s"%(a['Name'].upper(),a['Value'].upper()),float(a['Conf']),0.99,float(a['Time']))
+    if 'Feature_Value' in assume['Features']:
+        for a in [x['_attributes'] for x in assume['Features']['Feature_Value']]:
+            obj ="obj%s"%a['Object_ID']
+            if obj not in objects: objects += [obj]
+            if a['Value'].upper() == 'TRUE':
+                mem.post(obj,a['Name'].upper(),float(a['Conf']),0.99,float(a['Time']))
+            elif a['Name'].upper() == 'IS_A':
+                mem.post(obj,a['Value'].upper(),float(a['Conf']),0.99,float(a['Time']))
+            else:
+                mem.post(obj,"%s:%s"%(a['Name'].upper(),a['Value'].upper()),float(a['Conf']),0.99,float(a['Time']))
     for o in objects:
         mem.post(o,'new',1.0,0.99,0)
 
