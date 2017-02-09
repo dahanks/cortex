@@ -136,24 +136,25 @@ def queryNAL1(memory,src,dst):
 
 def consume(assume,mem):
     objects,hbaseline = [],0.0
-    attributes = [x['_attributes'] for x in assume['Features']['Feature_Value']]
-    for a in attributes:
-        if a['Name'].upper()=='HEARTBEAT_BASELINE':
-            hbaseline = float(a['Value'])
-    for a in attributes:
-        if a['Name'].upper()=='HEARTBEAT':
-            a['Value'] = 'OK' if float(a['Value'])<hbaseline else 'HIGH'
-        if a['Name'].upper()=='GAS_ALCOHOL':
-            a['Value'] = 'LOW' if float(a['Value'])<55.0 else 'HIGH'
+    if 'Feature_Value' in assume['Features']:
+        attributes = [x['_attributes'] for x in assume['Features']['Feature_Value']]
+        for a in attributes:
+            if a['Name'].upper()=='HEARTBEAT_BASELINE':
+                hbaseline = float(a['Value'])
+        for a in attributes:
+            if a['Name'].upper()=='HEARTBEAT':
+                a['Value'] = 'OK' if float(a['Value'])<hbaseline else 'HIGH'
+            if a['Name'].upper()=='GAS_ALCOHOL':
+                a['Value'] = 'LOW' if float(a['Value'])<55.0 else 'HIGH'
 
-        obj ="obj%s"%a['Object_ID']
-        if obj not in objects: objects += [obj]
-        if a['Value'].upper() == 'TRUE':
-           mem.post(obj,a['Name'].upper(),float(a['Conf']),0.99,float(a['Time']))
-        elif a['Name'].upper() == 'IS_A':
-           mem.post(obj,a['Value'].upper(),float(a['Conf']),0.99,float(a['Time']))
-        else:
-           mem.post(obj,"%s:%s"%(a['Name'].upper(),a['Value'].upper()),float(a['Conf']),0.99,float(a['Time']))
+            obj ="obj%s"%a['Object_ID']
+            if obj not in objects: objects += [obj]
+            if a['Value'].upper() == 'TRUE':
+               mem.post(obj,a['Name'].upper(),float(a['Conf']),0.99,float(a['Time']))
+            elif a['Name'].upper() == 'IS_A':
+               mem.post(obj,a['Value'].upper(),float(a['Conf']),0.99,float(a['Time']))
+            else:
+               mem.post(obj,"%s:%s"%(a['Name'].upper(),a['Value'].upper()),float(a['Conf']),0.99,float(a['Time']))
     for o in objects:
         mem.post(o,'new',1.0,0.99,0)
 
