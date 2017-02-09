@@ -135,8 +135,17 @@ def queryNAL1(memory,src,dst):
     return result[3]>0.5 and result[4]>0.1 # F,C exceeds this arbitrary threshold
 
 def consume(assume,mem):
-    objects = []
-    for a in [x['_attributes'] for x in assume['Features']['Feature_Value']]:
+    objects,hbaseline = [],0.0
+    attributes = [x['_attributes'] for x in assume['Features']['Feature_Value']]
+    for a in attributes:
+        if a['Name'].upper()=='HEARTBEAT_BASELINE':
+            hbaseline = float(a['Value'])
+    for a in attributes:
+        if a['Name'].upper()=='HEARTBEAT':
+            a['Value'] = 'OK' if float(a['Value'])<hbaseline else 'HIGH'
+        if a['Name'].upper()=='GAS_ALCOHOL':
+            a['Value'] = 'LOW' if float(a['Value'])<55.0 else 'HIGH'
+
         obj ="obj%s"%a['Object_ID']
         if obj not in objects: objects += [obj]
         if a['Value'].upper() == 'TRUE':
@@ -241,12 +250,8 @@ class MySpecialWorker(Worker):
         exec(transform('''
         incidentPolicy(mem,comm) =
           % arrival response
-          queryNAL1(mem,'ARRIVAL','new') & queryNAL1(mem,'SHOOTER','old') ~>
-            sendMsg(comm,'arrival:shooter_alert') ||
-            forget(mem,'new');
-        
-          queryNAL1(mem,'ARRIVAL','new') ~>
-            sendMsg(comm,'arrival') ||
+          queryNAL1(mem,'HEARTBEAT:HIGH','new')  ~>
+            sendMsg(comm,'fireman:detected_high_heartbeat') ||
             forget(mem,'new');
         
           % fire responses
