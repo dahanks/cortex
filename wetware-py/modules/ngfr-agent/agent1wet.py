@@ -135,20 +135,22 @@ def queryNAL1(memory,src,dst):
     return result[3]>0.5 and result[4]>0.1 # F,C exceeds this arbitrary threshold
 
 def consume(assume,mem):
-    objects,hbaseline = [],0.0
+    objects,hbaseline,gbaseline = [], 0.0, 0.0
     if 'Feature_Value' in assume['Features']:
         if isinstance(assume['Features']['Feature_Value'], dict):
             attributes = [assume['Features']['Feature_Value']['_attributes']]
         else:
             attributes = [x['_attributes'] for x in assume['Features']['Feature_Value']]
         for a in attributes:
-            if a['Name'].upper()=='HEARTBEAT_BASELINE':
+            if a['Name'].upper() == 'HEARTBEAT_BASELINE':
                 hbaseline = float(a['Value'])
+            if a['Name'].upper() == 'GAS_ALCOHOL_BASELINE':
+                gbaseline = float(a['Value'])
         for a in attributes:
-            if a['Name'].upper()=='HEARTBEAT':
+            if a['Name'].upper()== 'HEARTBEAT':
                 a['Value'] = 'OK' if float(a['Value'])<hbaseline else 'HIGH'
             if a['Name'].upper()=='GAS_ALCOHOL':
-                a['Value'] = 'LOW' if float(a['Value'])<55.0 else 'HIGH'
+                a['Value'] = 'OK' if float(a['Value'])<gbaseline else 'HIGH'
 
             obj ="obj%s"%a['Object_ID']
             if obj not in objects: objects += [obj]
