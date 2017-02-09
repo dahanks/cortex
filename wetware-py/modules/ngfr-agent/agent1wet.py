@@ -137,7 +137,10 @@ def queryNAL1(memory,src,dst):
 def consume(assume,mem):
     objects,hbaseline = [],0.0
     if 'Feature_Value' in assume['Features']:
-        attributes = [x['_attributes'] for x in assume['Features']['Feature_Value']]
+        if isinstance(assume['Features']['Feature_Value'], dict):
+            attributes = [assume['Features']['Feature_Value']['_attributes']]
+        else:
+            attributes = [x['_attributes'] for x in assume['Features']['Feature_Value']]
         for a in attributes:
             if a['Name'].upper()=='HEARTBEAT_BASELINE':
                 hbaseline = float(a['Value'])
