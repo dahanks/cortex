@@ -135,17 +135,26 @@ def queryNAL1(memory,src,dst):
     return result[3]>0.5 and result[4]>0.1 # F,C exceeds this arbitrary threshold
 
 def consume(assume,mem):
-    objects = []
+    objects,hbaseline = [],0.0
     if 'Feature_Value' in assume['Features']:
-        for a in [x['_attributes'] for x in assume['Features']['Feature_Value']]:
+        attributes = [x['_attributes'] for x in assume['Features']['Feature_Value']]
+        for a in attributes:
+            if a['Name'].upper()=='HEARTBEAT_BASELINE':
+                hbaseline = float(a['Value'])
+        for a in attributes:
+            if a['Name'].upper()=='HEARTBEAT':
+                a['Value'] = 'OK' if float(a['Value'])<hbaseline else 'HIGH'
+            if a['Name'].upper()=='GAS_ALCOHOL':
+                a['Value'] = 'LOW' if float(a['Value'])<55.0 else 'HIGH'
+
             obj ="obj%s"%a['Object_ID']
             if obj not in objects: objects += [obj]
             if a['Value'].upper() == 'TRUE':
-                mem.post(obj,a['Name'].upper(),float(a['Conf']),0.99,float(a['Time']))
+               mem.post(obj,a['Name'].upper(),float(a['Conf']),0.99,float(a['Time']))
             elif a['Name'].upper() == 'IS_A':
-                mem.post(obj,a['Value'].upper(),float(a['Conf']),0.99,float(a['Time']))
+               mem.post(obj,a['Value'].upper(),float(a['Conf']),0.99,float(a['Time']))
             else:
-                mem.post(obj,"%s:%s"%(a['Name'].upper(),a['Value'].upper()),float(a['Conf']),0.99,float(a['Time']))
+               mem.post(obj,"%s:%s"%(a['Name'].upper(),a['Value'].upper()),float(a['Conf']),0.99,float(a['Time']))
     for o in objects:
         mem.post(o,'new',1.0,0.99,0)
 
@@ -242,51 +251,47 @@ class MySpecialWorker(Worker):
         exec(transform('''
         incidentPolicy(mem,comm) =
           % arrival response
-          queryNAL1(mem,'ARRIVAL','new') & queryNAL1(mem,'SHOOTER','old') ~>
-            sendMsg(comm,'arrival:shooter_alert') ||
-            forget(mem,'new');
-        
-          queryNAL1(mem,'ARRIVAL','new') ~>
-            sendMsg(comm,'arrival') ||
+          queryNAL1(mem,'HEARTBEAT:HIGH','new')  ~>
+            sendMsg(comm,'fireman:detected_high_heartbeat') ||
             forget(mem,'new');
         
           % fire responses
           queryNAL1(mem,'FIRE','new') & queryNAL1(mem,'SHOOTER','old') & queryNAL1(mem,'HAZARDS:CHEMICALS','old') ~>
             sendMsg(comm,'fireman:shooter_alert') ||
             sendMsg(comm,'fireman:chemical_hazards') ||
-            sendMsg(comm,'fireman:deploy_message') ||
+            sendMsg(comm,'fireman:suggest_deploy_team') ||
             forget(mem,'new') || post(mem,'FIRE','old',1,0.99,0);
         
           queryNAL1(mem,'FIRE','new') & queryNAL1(mem,'HAZARDS:CHEMICALS','old') ~>
-            sendMsg(comm,'fireman:chemical_hazards') ||
-            sendMsg(comm,'fireman:deploy_message') ||
+            sendMsg(comm,'fireman:suggest_hazmat_team') ||
+            sendMsg(comm,'fireman:suggest_deploy_team') ||
             forget(mem,'new') || post(mem,'FIRE','old',1,0.99,0);
         
           queryNAL1(mem,'FIRE','new') & queryNAL1(mem,'SHOOTER','old') ~>
             sendMsg(comm,'fireman:shooter_alert') ||
-            sendMsg(comm,'fireman:deploy_message') ||
+            sendMsg(comm,'fireman:suggest_deploy_team') ||
             forget(mem,'new') || post(mem,'FIRE','old',1,0.99,0);
         
           queryNAL1(mem,'FIRE','new') ~>
-            sendMsg(comm,'fireman:deploy_message') ||
+            sendMsg(comm,'fireman:suggest_deploy_team') ||
             forget(mem,'new') || post(mem,'FIRE','old',1,0.99,0);
         
           % picture analytic response
           queryNAL1(mem,'HUMAN+WEAPON','new') ~>
-            sendMsg(comm,'interface:shooterPicture') ||
+            sendMsg(comm,'police:suggest_deploy_team') ||
             forget(mem,'new') || post(mem,'HUMAN+WEAPON','old',1,0.99,0);
         
           % tweat response
           queryNAL1(mem,'SHOOTER','new') ~>
-            sendMsg(comm,'interface:camera_activate_msg') ||
-            sendMsg(comm,'police:deploy_team_msg') ||
+            sendMsg(comm,'interface:camera_activation_msg') ||
             forget(mem,'new') || post(mem,'SHOOTER','old',1,0.99,0);
 
           % 911 response
           queryNAL1(mem,'911_SUSPECT','new') ~>
-            sendMsg(comm,'police:deploy_cruiser_msg') ||
             sendMsg(comm,'interface:Query_Address_Info') ||
+            sendMsg(comm,'interface:Query_Geospacial_Info') ||
             sendMsg(comm,'interface:Subscribe_social_media') ||
+            sendMsg(comm,'911_call_frequency:occasional') ||
             forget(mem,'new') ||
             post(mem,'911_SUSPECT','old',1,0.99,0);
             
