@@ -261,7 +261,7 @@ class MySpecialWorker(Worker):
           % fire responses
           queryNAL1(mem,'FIRE','new') & queryNAL1(mem,'SHOOTER','old') & queryNAL1(mem,'HAZARDS:CHEMICALS','old') ~>
             sendMsg(comm,'fireman:shooter_alert') ||
-            sendMsg(comm,'fireman:chemical_hazards') ||
+            sendMsg(comm,'fireman:suggest_hazmat_team') ||
             sendMsg(comm,'fireman:suggest_deploy_team') ||
             forget(mem,'new') || post(mem,'FIRE','old',1,0.99,0);
         
@@ -294,7 +294,6 @@ class MySpecialWorker(Worker):
             sendMsg(comm,'interface:Query_Address_Info') ||
             sendMsg(comm,'interface:Query_Geospacial_Info') ||
             sendMsg(comm,'interface:Subscribe_social_media') ||
-            sendMsg(comm,'911_call_frequency:occasional') ||
             forget(mem,'new') ||
             post(mem,'911_SUSPECT','old',1,0.99,0);
             
