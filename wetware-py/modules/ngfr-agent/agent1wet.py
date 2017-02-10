@@ -144,7 +144,7 @@ def consume(assume,mem):
         for a in attributes:
             if a['Name'].upper() == 'HEARTBEAT_BASELINE':
                 hbaseline = float(a['Value'])
-            if a['Name'].upper() == 'GAS_ALCOHOL_BASELINE':
+            if a['Name'].upper() == 'ALCOHOL_BASELINE':
                 gbaseline = float(a['Value'])
         for a in attributes:
             if a['Name'].upper()== 'HEARTBEAT':
