@@ -211,7 +211,21 @@ class __var():
 
 def sendMsg__start(comm,msg):
     # connection to wetware here for sending messages
-    comm.publish(msg)
+    
+    comm.publish({
+                 'fireman:gas_concentration_high': "Notifying fireman of high gas concentration",
+                 'fireman:detected_high_heartbeat': "Notifying fireman of high heart rate",
+                 'fireman:shooter_alert': "Notifying fireman of shooter alert",
+                 'fireman:suggest_hazmat_team': "Suggesting fireman requires hazmat team",
+                 'fireman:suggest_deploy_team': "Suggesting fireman deploys",
+                 
+                 'police:suggest_deploy_team': "Suggesting police deploys",
+                 
+                 'interface:camera_activation_msg': "Audrey accessing camera",
+                 'interface:Query_Address_Info': "Audrey accessing address information",
+                 'interface:Query_Geospacial_Info': "Audrey accessing geospatial information",
+                 'interface:Subscribe_social_media': "Audrey accessing to social media"
+                 }[msg])
 def sendMsg__stop(): pass
 
 def forget__start(mem,concept):
@@ -258,6 +272,10 @@ class MySpecialWorker(Worker):
           % arrival response
           queryNAL1(mem,'HEARTBEAT:HIGH','new')  ~>
             sendMsg(comm,'fireman:detected_high_heartbeat') ||
+            forget(mem,'new');
+            
+          queryNAL1(mem,'GAS_ALCOHOL:HIGH','new')  ~>
+            sendMsg(comm,'fireman:gas_concentration_high') ||
             forget(mem,'new');
         
           % fire responses
