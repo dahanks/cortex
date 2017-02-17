@@ -134,8 +134,12 @@ def queryNAL1(memory,src,dst):
                 agenda.append((revision(A,V), P+PP))
     return result[3]>0.5 and result[4]>0.1 # F,C exceeds this arbitrary threshold
 
+hbaseline,gbaseline = 0.0, 0.0
+
 def consume(assume,mem):
-    objects,hbaseline,gbaseline = [], 0.0, 0.0
+    global hbaseline
+    global gbaseline
+    objects = []
     if 'Feature_Value' in assume['Features']:
         if isinstance(assume['Features']['Feature_Value'], dict):
             attributes = [assume['Features']['Feature_Value']['_attributes']]
@@ -270,6 +274,11 @@ class MySpecialWorker(Worker):
         exec(transform('''
         incidentPolicy(mem,comm) =
           % arrival response
+          queryNAL1(mem,'HEARTBEAT:HIGH','new') & queryNAL1(mem,'GAS_ALCOHOL:HIGH','new')  ~>
+            sendMsg(comm,'fireman:detected_high_heartbeat') ||
+            sendMsg(comm,'fireman:gas_concentration_high') ||
+            forget(mem,'new');
+
           queryNAL1(mem,'HEARTBEAT:HIGH','new')  ~>
             sendMsg(comm,'fireman:detected_high_heartbeat') ||
             forget(mem,'new');
