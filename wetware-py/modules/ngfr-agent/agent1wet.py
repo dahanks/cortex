@@ -151,6 +151,8 @@ def consume(assume,mem):
             if a['Name'].upper() == 'ALCOHOL_BASELINE':
                 gbaseline = float(a['Value'])
         for a in attributes:
+            if a['Name'].upper()== 'TEMP':
+                a['Value'] = 'OK' if float(a['Value'])<900 else 'HIGH'
             if a['Name'].upper()== 'HEARTBEAT':
                 a['Value'] = 'OK' if float(a['Value'])<hbaseline else 'HIGH'
             if a['Name'].upper()=='GAS_ALCOHOL':
@@ -222,6 +224,7 @@ def sendMsg__start(comm,msg):
                  'fireman:shooter_alert': "Notifying fireman of shooter alert",
                  'fireman:suggest_hazmat_team': "Suggesting fireman requires hazmat team",
                  'fireman:suggest_deploy_team': "Suggesting fireman deploys",
+                 'fireman:flashover_imminent': "Firemen Alert: Flashover Imminent",
                  
                  'police:suggest_deploy_team': "Suggesting police deploys",
                  
@@ -330,7 +333,17 @@ class MySpecialWorker(Worker):
           queryNAL1(mem,'BUILDING','new') ~>
             forget(mem,'new') ||
             post(mem,'BUILDING','old',1,0.99,0);
-          
+            
+          % smoke message
+          queryNAL1(mem,'SMOKE','new') ~>
+            forget(mem,'new') ||
+            post(mem,'SMOKE','old',1,0.99,0);
+
+          % high temperature message
+          queryNAL1(mem,'TEMP:HIGH','new') & queryNAL1(mem,'SMOKE','old') ~>
+            sendMsg(comm,'fireman:flashover_imminent') ||
+            forget(mem,'new');
+
           True ~> nil
         '''))
         self.do_my_trp = incidentPolicy
