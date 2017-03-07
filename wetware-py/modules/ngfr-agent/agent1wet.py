@@ -280,15 +280,15 @@ class MySpecialWorker(Worker):
           queryNAL1(mem,'HEARTBEAT:HIGH','new') & queryNAL1(mem,'GAS_ALCOHOL:HIGH','new')  ~>
             sendMsg(comm,'fireman:detected_high_heartbeat') ||
             sendMsg(comm,'fireman:gas_concentration_high') ||
-            forget(mem,'new');
+            forget(mem,'new') || forget(mem, 'HEARTBEAT:HIGH') || forget(mem, 'GAS_ALCOHOL:HIGH');
 
           queryNAL1(mem,'HEARTBEAT:HIGH','new')  ~>
             sendMsg(comm,'fireman:detected_high_heartbeat') ||
-            forget(mem,'new');
+            forget(mem,'new') || forget(mem, 'HEARTBEAT:HIGH');
             
           queryNAL1(mem,'GAS_ALCOHOL:HIGH','new')  ~>
             sendMsg(comm,'fireman:gas_concentration_high') ||
-            forget(mem,'new');
+            forget(mem,'new') || forget(mem, 'GAS_ALCOHOL:HIGH');
         
           % fire responses
           queryNAL1(mem,'FIRE','new') & queryNAL1(mem,'SHOOTER','old') & queryNAL1(mem,'HAZARDS:CHEMICALS','old') ~>
