@@ -59,7 +59,7 @@ public class Neuron {
         fxns.each {
             switch (it['fxn']) {
             case "addVertex":
-                retVal = neuronAddVertex(it['name'], traversal);
+                retVal = neuronAddVertex(it['name'], traversal, it['properties']);
                 break;
             case "addVertexProperty":
                 retVal = neuronAddVertexProperty(it['name'], it['property'], it['value'], traversal);
@@ -78,22 +78,33 @@ public class Neuron {
         return retVal;
     }
 
-    public neuronAddVertex(name, traversal) {
+    public neuronAddVertex(name, traversal, properties) {
         def vertex_iter = traversal.V().has("name", name);
+        def vertex = null;
         if (vertex_iter) {
-            return vertex_iter.next();
+            vertex = vertex_iter.next();
         } else {
-            return traversal.addV("name", name).next();
+            vertex = traversal.addV("name", name).next();
         }
+        for (prop in properties) {
+            addVertexProperty(vertex, prop.key, prop.value, traversal);
+        }
+        return vertex;
     }
 
     public neuronAddVertexProperty(name, key, value, traversal) {
+    /*Just a wrapper for if you haven't grabbed the vertex yet
+    */
+        def vertex = neuronAddVertex(name, traversal);
+        return addVertexProperty(vertex, key, value, traversal);
+    }
+
+    public addVertexProperty(vertex, key, value, traversal) {
     /*The only types supported in Neuron will be:
       int, double, string, and Geoshape (using list [])
       Actual lists should be handled by Neuron libraries as
       multiple property values under the same property key.
     */
-        def vertex = neuronAddVertex(name, traversal);
         println "Adding property: " + key;
         switch(value.getClass()) {
         case String:
