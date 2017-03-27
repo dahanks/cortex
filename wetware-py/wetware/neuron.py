@@ -47,10 +47,6 @@ class Statements(dict):
         statement['fxns'].append(fxn)
         self['statements'].append(statement)
 
-    def add_edges(self, *tuples):
-        for edge in tuples:
-            self.add_edge(edge)
-
     def __get_name(self, string_or_dict):
         """If string, return it; if dict, return value of 'name'.
         Aids in allowing vertices to be addressed as strings or a dict
@@ -79,25 +75,21 @@ class Statements(dict):
         by making sure that only one edge with the "label" exists between
         two vertices with the same "name" property.
         Creating an Edge will also create the Vertices, if they don't exist.
-        This function takes either:
-          4 arguments: from_vertex, label, to_vertex, edge_properties_dict (default None)
-         OR
-          a 3-tuple as (from_vertex, label, to_vertex)
-         OR
-          a 4-tuple as (from_vertex, label, to_vertex, edge_properties_dict)
+
+        from_vertex and to_vertex can be either strings for 'name' or a dict
+          of the vertex, itself.
         """
         statement = {'fxns': [], 'api': 'neuron'}
         from_name = self.__get_name(from_vertex)
         to_name = self.__get_name(to_vertex)
-
-        for edge_tuple in tuples:
-            fxn = {'fxn': 'addEdge',
-                   'fromVertex': edge_tuple[0],
-                   'label': edge_tuple[1],
-                   'toVertex': edge_tuple[2],
-                   'properties': edge_tuple[3]
-            }
-            statement['fxns'].append(fxn)
+        props = self.__get_properties(edge_properties)
+        fxn = {'fxn': 'addEdge',
+               'fromVertex': from_name,
+               'label': label,
+               'toVertex': to_name,
+               'properties': props
+        }
+        statement['fxns'].append(fxn)
         self['statements'].append(statement)
 
     def add_vertex_property(self, name, prop_name, prop_value):

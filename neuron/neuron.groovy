@@ -59,7 +59,7 @@ public class Neuron {
         fxns.each {
             switch (it['fxn']) {
             case "addVertex":
-                retVal = neuronAddVertex(it['name'], traversal, it['properties']);
+                retVal = neuronAddVertex(it['name'], it['properties'], traversal);
                 break;
             case "addVertexProperty":
                 retVal = neuronAddVertexProperty(it['name'], it['property'], it['value'], traversal);
@@ -68,7 +68,7 @@ public class Neuron {
                 retVal = neuronGetVertexProperty(it['name'], it['property'], traversal);
                 break;
             case "addEdge":
-                retVal = neuronAddEdge(it['fromVertex'], it['toVertex'], it['label'], traversal);
+                retVal = neuronAddEdge(it['fromVertex'], it['toVertex'], it['label'], it['properties'], traversal);
                 break;
             case "getVerticesTypeGeoWithin":
                 retVal = neuronGetVerticesTypeGeoWithin(it['type'], it['property'], it['geoshape'], traversal);
@@ -78,7 +78,7 @@ public class Neuron {
         return retVal;
     }
 
-    public neuronAddVertex(name, traversal, properties) {
+    public neuronAddVertex(name, properties, traversal) {
         def vertex_iter = traversal.V().has("name", name);
         def vertex = null;
         if (vertex_iter) {
@@ -87,7 +87,7 @@ public class Neuron {
             vertex = traversal.addV("name", name).next();
         }
         for (prop in properties) {
-            addVertexProperty(vertex, prop.key, prop.value, traversal);
+            addProperty(vertex, prop.key, prop.value, traversal);
         }
         return vertex;
     }
@@ -96,11 +96,13 @@ public class Neuron {
     /*Just a wrapper for if you haven't grabbed the vertex yet
     */
         def vertex = neuronAddVertex(name, traversal);
-        return addVertexProperty(vertex, key, value, traversal);
+        return addProperty(vertex, key, value, traversal);
     }
 
-    public addVertexProperty(vertex, key, value, traversal) {
-    /*The only types supported in Neuron will be:
+    public addProperty(v_or_e, key, value, traversal) {
+    /*This function can be used on a Vertex or an Edge.
+
+      The only types supported in Neuron will be:
       int, double, string, and Geoshape (using list [])
       Actual lists should be handled by Neuron libraries as
       multiple property values under the same property key.
@@ -109,36 +111,36 @@ public class Neuron {
         switch(value.getClass()) {
         case String:
             if (key == "type") {
-                vertex.property(key, value);
+                v_or_e.property(key, value);
             } else {
                 //we could Base64 encode everything, but we'll just push
                 // that responsibility to clients.  Invalid chars are:
                 // '[',  ']', and ','
-                //vertex.property(key, "base64:" + value.bytes.encodeBase64().toString());
+                //v_or_e.property(key, "base64:" + value.bytes.encodeBase64().toString());
 
                 //instead just do it like everything else
-                vertex.property(key, value);
+                v_or_e.property(key, value);
             }
             break;
         case Integer:
             //this actually works as is, but might as well separate
-            vertex.property(key, value);
+            v_or_e.property(key, value);
             break;
         case BigDecimal:
-            vertex.property(key, value.doubleValue());
+            v_or_e.property(key, value.doubleValue());
             break;
         case ArrayList:
             //Expect ArrayLists to be mapped to Geoshapes.
             // This requires a property defined in the schema typed as Geoshape
             // If this isn't the case, this add() will fail (look at exception)
-            vertex.property(key, value);
+            v_or_e.property(key, value);
             break;
         default:
-            vertex.property(key, value);
+            v_or_e.property(key, value);
             break;
         }
         println "Property added: " + value.toString();
-        return vertex;
+        return v_or_e;
     }
 
     public neuronGetVertexProperty(name, key, traversal) {
@@ -150,16 +152,21 @@ public class Neuron {
         }
     }
 
-    public neuronAddEdge(fromName, toName, label, traversal) {
+    public neuronAddEdge(fromName, toName, label, properties, traversal) {
     //Adding an Edge will add the Vertices as well
-        def fromVertex = neuronAddVertex(fromName, traversal);
-        def toVertex = neuronAddVertex(toName, traversal);
+        def fromVertex = neuronAddVertex(fromName, [], traversal);
+        def toVertex = neuronAddVertex(toName, [], traversal);
         def edge_iter = traversal.V(fromVertex).out(label).has("name", toName);
+        def edge = null;
         if (edge_iter) {
-            return edge_iter.next();
+            edge = edge_iter.next();
         } else {
-            return fromVertex.addEdge(label, toVertex);
+            edge = fromVertex.addEdge(label, toVertex);
         }
+        for (prop in properties) {
+            addProperty(edge, prop.key, prop.value, traversal);
+        }
+        return edge;
     }
 
     public neuronGetVerticesTypeGeoWithin(type, property, geoshape, traversal) {
