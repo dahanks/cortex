@@ -25,40 +25,71 @@ class Statements(dict):
             for msg in msg_strings:
                 self['statements'].append(msg)
 
-    def add_vertex(self, *names):
+    def add_vertices(self, *vertices):
+        """1.2.0: Simply allows creating multiple vertices in the same invocaiton"""
+        for vertex in vertices:
+            self.add_vertex(vertex)
+
+    def add_vertex(self, vertex_or_name):
         """Add a vertex and guarantee that it is unique by referring
         to the "name" property (which will be our vertex index)"
-        Can make multiple vertices in the same call.
+
+        1.2.0: This function can take either a string or a dict.
+         If a string, this will be used as the 'name' for the vertex.
+         If a dict, this will be treated as the vertex's properties, and the dict
+          must include 'name' as a key.
         """
+        name = self.__get_name(vertex_or_name)
         statement = {'fxns': [], 'api': 'neuron'}
-        for name in names:
-            fxn = {'fxn': 'addVertex', 'name': name}
-            statement['fxns'].append(fxn)
+        fxn = {'fxn': 'addVertex', 'name': name}
+        properties = self.__get_properties(vertex_or_name)
+        fxn['properties'] = properties
+        statement['fxns'].append(fxn)
         self['statements'].append(statement)
 
-    def add_edge(self, *tuples):
+    def __get_name(self, string_or_dict):
+        """If string, return it; if dict, return value of 'name'.
+        Aids in allowing vertices to be addressed as strings or a dict
+        of the entire vertex.
+        """
+        if isinstance(string_or_dict, str):
+            return string_or_dict
+        elif isinstance(string_or_dict, dict) and 'name' in string_or_dict:
+            return string_or_dict['name']
+        else:
+            raise NeuronException("Tried to __get_name() on something other than a str or dict with 'name' key")
+
+    def __get_properties(self, vertex):
+        """If vertex is a dict, return all values that aren't 'name'.
+        """
+        properties = dict()
+        if isinstance(vertex, dict):
+            for prop in vertex:
+                if prop == "name":
+                    continue
+                properties[prop] = vertex[prop]
+        return properties
+
+    def add_edge(self, from_vertex, label, to_vertex, edge_properties=None):
         """Add an edge between two vertices and guarantee that it is unique
         by making sure that only one edge with the "label" exists between
         two vertices with the same "name" property.
         Creating an Edge will also create the Vertices, if they don't exist.
-        This function takes either:
-          3 arguments: from_vertex, label, to_vertex
-         OR
-          a list of 3-tuples, each as (from_vertex, label, to_vertex)
+
+        from_vertex and to_vertex can be either strings for 'name' or a dict
+          of the vertex, itself.
         """
         statement = {'fxns': [], 'api': 'neuron'}
-        #If you only want one edge, give the 3 args (not in a tuple), and
-        # we'll handle the rest by making it one proper tuple in a list.
-        if not isinstance(tuples[0], tuple):
-            #This will throw an exception if you don't put it at least 3 args
-            # ...and that's good!
-            tuples = [(tuples[0], tuples[1], tuples[2])]
-        for edge_tuple in tuples:
-            fxn = {'fxn': 'addEdge',
-                   'fromVertex': edge_tuple[0],
-                   'label': edge_tuple[1],
-                   'toVertex': edge_tuple[2] }
-            statement['fxns'].append(fxn)
+        from_name = self.__get_name(from_vertex)
+        to_name = self.__get_name(to_vertex)
+        props = self.__get_properties(edge_properties)
+        fxn = {'fxn': 'addEdge',
+               'fromVertex': from_name,
+               'label': label,
+               'toVertex': to_name,
+               'properties': props
+        }
+        statement['fxns'].append(fxn)
         self['statements'].append(statement)
 
     def add_vertex_property(self, name, prop_name, prop_value):
