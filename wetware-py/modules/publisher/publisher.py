@@ -52,7 +52,7 @@ class WetwareWorker(Worker):
                                      "What is the coolness of David?",
                                      "Where is David?",
                                  ]}
-        self.publish(statements)
+        self.publish(statements, topic='/queue/wetware.nlp')
 
 def main():
     logging.basicConfig(level=logging.DEBUG)
