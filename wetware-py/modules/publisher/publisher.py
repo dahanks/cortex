@@ -23,15 +23,16 @@ class WetwareWorker(Worker):
         time.sleep(1)
 
         #Add vertex by dict with properties
+        george = {'name': "George", 'age': 30, 'height': 1.6}
         statements = Statements()
-        statements.add_vertex({'name': "Lorna", 'age': 10, 'height': 2.4})
+        statements.add_vertex(george)
         self.publish(statements)
 
         time.sleep(1)
 
         #Add multiple vertices at once
         statements = Statements()
-        statements.add_vertices("David2", {'name': "Lorna", 'age': 11, 'height': 2.5})
+        statements.add_vertices("David", george)
         self.publish(statements)
 
         time.sleep(2)
@@ -40,17 +41,16 @@ class WetwareWorker(Worker):
         # and the other by a dict)
         #Vertices are created, but not with properties!
         statements = Statements()
-        statements.add_edge("David", "knows", {'name': "Lorna", 'age': 11, 'height': 2.5}, {'rel': 0.4})
+        statements.add_edge("David", "knows", george, {'rel': 0.4})
         self.publish(statements)
 
     def send_nlp_statements(self):
         statements = {"statements": ["David knows Ed.",
                                      "David is nice.",
-                                     "The coolness of David is high.",
+                                     "The happiness of David is high.",
                                      "Does David know Ed?",
                                      "Is David nice?",
-                                     "What is the coolness of David?",
-                                     "Where is David?",
+                                     "What is the happiness of David?",
                                  ]}
         self.publish(statements, topic='/queue/wetware.nlp')
 
