@@ -95,7 +95,7 @@ public class Neuron {
     public neuronAddVertexProperty(name, key, value, traversal) {
     /*Just a wrapper for if you haven't grabbed the vertex yet
     */
-        def vertex = neuronAddVertex(name, traversal);
+        def vertex = neuronAddVertex(name, [], traversal);
         return addProperty(vertex, key, value, traversal);
     }
 
