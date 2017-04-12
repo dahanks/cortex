@@ -52,7 +52,7 @@ class Statements(dict):
         Aids in allowing vertices to be addressed as strings or a dict
         of the entire vertex.
         """
-        if isinstance(string_or_dict, str):
+        if type(string_or_dict) in (str, unicode):
             return string_or_dict
         elif isinstance(string_or_dict, dict) and 'name' in string_or_dict:
             return string_or_dict['name']
