@@ -1,53 +1,52 @@
 #!/bin/bash
-set -e
 
 #Cassandra
-pushd cassandra/
+pushd ../cassandra/
 make && make run
 popd
 
 #ElasticSearch
-pushd elasticsearch/
+pushd ../elasticsearch/
 make && make run
 popd
 
 #Apollo
-pushd apollo/
+pushd ../apollo/
 make && make run
 popd
 
 #Maven
-#pushd maven/
+#pushd ../maven/
 #make
 #popd
 
 #Titan
-pushd titan/
+pushd ../titan/
 make
 popd
 
 #Neuron
 sleep 10 #wait for cassandra, just in case
-pushd neuron/
+pushd ../neuron/
 make && make run
 popd
 
 #Wetware-Py
-pushd wetware-py/
+pushd ../wetware-py/
 make
 popd
 
 #Wetware NLP for Audrey-Chat
-pushd wetware-py/modules/nlp
+pushd ../wetware-py/modules/nlp
 make && make run
 popd
 
 #Wetware Registrar for Apollo users
-pushd wetware-py/modules/apollo_registrar
+pushd ../wetware-py/modules/apollo_registrar
 make && make run
 popd
 
 #Audrey Chat
-pushd audrey-chat/
+pushd ../audrey-chat/
 make && make run
 popd
