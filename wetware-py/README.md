@@ -1,3 +1,8 @@
+# Installation
+Run `pip install .` in this directory to install `wetware-py` as a Python package.  You will need to do this to import `wetware` modules, such as `Worker`.
+
+If you install `wetware-py` using `pip install -e .` this will link the installed package directly to the source.  This is useful if you're doing development on the `wetware-py` modules, themselves (but not necessarily if you're just making a worker).
+
 # Worker
 An Wetware Worker subscribes to a topic, waiting for messages.  Upon receiving a message, it does some amount of work based on what you define for it to do.  Finally (and optionally), it may publish results to another topic.
 
