@@ -4,7 +4,7 @@ import logging
 import json
 
 from wetware.worker import Worker
-from wetware.neuron import Statements
+from wetware.neuron import Statements, Responses
 
 class WetwareWorker(Worker):
 
@@ -39,8 +39,23 @@ class WetwareWorker(Worker):
             del vertex['children']
             del vertex['parents']
             statements.add_vertex(vertex)
-        logging.error(statements)
         self.publish(statements)
+
+    def run_setup(self):
+        pass
+        #self.query_for_ake()
+
+    def query_for_ake(self):
+        statements = Statements()
+        statements.gremlin("g.V().valueMap()")
+        self.publish(statements, callback=self.print_results)
+
+    def print_results(self, frame, context, transaction):
+        responses = Responses(frame)
+        vertices = responses.get_vertex_objects()
+        logging.info(vertices)
+        import sys
+        sys.exit(1)
 
 def main():
     logging.basicConfig(level=logging.DEBUG)
