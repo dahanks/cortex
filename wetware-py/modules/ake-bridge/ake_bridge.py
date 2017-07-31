@@ -43,7 +43,7 @@ class WetwareWorker(Worker):
                 if node[name]['parents']!=None:
                     for c in node[name]['parents']:
                         statements.add_edge(name, 'parent', c)
-        self.publish(statements, callback=self.result_callback)
+        self.publish(statements)
 
     def run_setup(self):
         pass
