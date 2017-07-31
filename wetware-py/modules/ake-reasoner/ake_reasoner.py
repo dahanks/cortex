@@ -3,6 +3,7 @@
 import logging
 import json
 
+from subprocess import call
 from wetware.worker import Worker
 from wetware.neuron import Statements, Responses
 
@@ -19,6 +20,7 @@ class WetwareWorker(Worker):
 
         if frame.headers['destination'] == self.args['input_topic']:
             try:
+            	logging.debug(message['procedure'])
                 self.performScript(message['procedure'])
             except KeyError:
                 logging.exception("Something went wrong")
@@ -35,6 +37,8 @@ class WetwareWorker(Worker):
         ''' Take the returned value of the performScript query, call the python script (if any), and then move on to querying the children. '''
         responses = Responses(frame)
         logging.debug(responses)
+        logging.debug(responses[0])
+        logging.debug(responses[1])
         if responses[0]!=u'':
             call(['python', responses[0]]+responses[1].split())
         if responses[2]!=u'[]':
