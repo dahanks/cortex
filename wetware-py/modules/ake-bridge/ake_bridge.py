@@ -27,19 +27,23 @@ class WetwareWorker(Worker):
         if message['Ontology']['Name'] != "TSPI":
             logging.warning("Received ontology other than TSPI. Ignoring")
             return
+        
         statements = Statements()
+        statements.add_edge('TSPI_Container', 'child', 'foo')
         for node in message['Nodes']:
-            name = node.keys()[0]
-            vertex = node[name]
-            vertex['name'] = name
-            vertex['rules'] = str(vertex['rules'])
-            if vertex['children']:
-                for child in vertex['children']:
-                    statements.add_edge(name, "precedes", child)
-            del vertex['children']
-            del vertex['parents']
-            statements.add_vertex(vertex)
-        self.publish(statements)
+            for name in node:
+                statements.add_vertex_property(name, 'index', "%s"%node[name]['index'])
+                statements.add_vertex_property(name, 'type', node[name]['type'])
+                if node[name]['rules']!=None:
+                    for prop in node[name]['rules']:
+                        statements.add_vertex_property(name, prop, node[name]['rules'][prop])
+                if node[name]['children']!=None:
+                    for c in node[name]['children']:
+                        statements.add_edge(name, 'child', c)
+                if node[name]['parents']!=None:
+                    for c in node[name]['parents']:
+                        statements.add_edge(name, 'parent', c)
+        self.publish(statements, callback=self.result_callback)
 
     def run_setup(self):
         pass
