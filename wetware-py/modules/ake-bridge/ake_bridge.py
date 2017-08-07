@@ -23,8 +23,8 @@ class WetwareWorker(Worker):
             except KeyError:
                 logging.error("Received invalid TSPI JSON structure")
 
-    def process_ake_json(self, message, transaction):
-        if message['Ontology']['Name'] != "TSPI":
+    def process_ake_json(self, json_data, transaction):
+        if json_data['Ontology']['Name'] != "TSPI":
             logging.warning("Received ontology other than TSPI. Ignoring")
             return
         
