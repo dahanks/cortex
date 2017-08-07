@@ -47,6 +47,11 @@ make && make run
 popd
 
 #Audrey Chat
-pushd ../audrey-chat/
+#pushd ../audrey-chat/
+#make && make run
+#popd
+
+# ake-bridge
+pushd ../wetware-py/modules/ake-bridge
 make && make run
 popd
