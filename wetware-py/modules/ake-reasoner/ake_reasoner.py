@@ -20,7 +20,7 @@ class WetwareWorker(Worker):
 
         if frame.headers['destination'] == self.args['input_topic']:
             try:
-            	logging.debug(message['procedure'])
+                logging.debug(message['procedure'])
                 self.performScript(message['procedure'])
             except KeyError:
                 logging.exception("Something went wrong")
