@@ -29,21 +29,22 @@ class WetwareWorker(Worker):
             return
         
         statements = Statements()
-        statements.add_edge('TSPI_Container', 'child', 'foo')
-        for node in message['Nodes']:
+        for node in json_data['Nodes']:
             for name in node:
-                statements.add_vertex_property(name, 'index', "%s"%node[name]['index'])
-                statements.add_vertex_property(name, 'type', node[name]['type'])
+                statements.add_vertex(name)
+                statements.add_vertex_property(name,'index',"%s"%node[name]['index'])
+                statements.add_vertex_property(name,'type',node[name]['type'])
                 if node[name]['rules']!=None:
                     for prop in node[name]['rules']:
-                        statements.add_vertex_property(name, prop, node[name]['rules'][prop])
-                if node[name]['children']!=None:
-                    for c in node[name]['children']:
-                        statements.add_edge(name, 'child', c)
-                if node[name]['parents']!=None:
-                    for c in node[name]['parents']:
-                        statements.add_edge(name, 'parent', c)
-        self.publish(statements)
+                        statements.add_vertex_property(name,prop,node[name]['rules'][prop])
+        for edge in json_data['Links']:
+            for name in edge:
+                print edge
+                if edge[name]['rules']==None:
+                    statements.add_edge(edge[name]['source'],'next',edge[name]['target'])
+                else:
+                    statements.add_edge(edge[name]['source'],"next%s"%edge[name]['rules']['Conditional'],edge[name]['target'])
+        self.publish(statements, callback=self.print_results)
 
     def run_setup(self):
         pass
@@ -58,8 +59,6 @@ class WetwareWorker(Worker):
         responses = Responses(frame)
         vertices = responses.get_vertex_objects()
         logging.info(vertices)
-        import sys
-        sys.exit(1)
 
 def main():
     logging.basicConfig(level=logging.DEBUG)
