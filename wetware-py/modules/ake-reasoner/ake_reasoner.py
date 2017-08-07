@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
-import logging
 import json
+import logging
+import subprocess as sub
 
 from subprocess import call
 from wetware.worker import Worker
