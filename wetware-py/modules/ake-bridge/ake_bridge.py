@@ -45,7 +45,7 @@ class WetwareWorker(Worker):
             for name in edge:
                 statements.add_edge(edge[name]['source'],'next',edge[name]['target'],edge[name]['rules'])
         print "publishing the script"
-        self.publish(statements, callback=self.result_callback)
+        self.publish(statements, callback=self.print_results)
 
     def print_results(self, frame, context, transaction):
         responses = Responses(frame)

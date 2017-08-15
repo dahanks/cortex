@@ -39,19 +39,20 @@ class WetwareWorker(Worker):
         print responses
         nodes = responses.get_vertex_objects()
         for n in nodes:
-            # print n
+            print n
             statements = Statements()
             output = ''
             if 'Execute' in n:
                 p = (sub.Popen(['python', n['Execute']],stdout=sub.PIPE,stderr=sub.PIPE) if 'Param' not in n else
                      sub.Popen(['python', n['Execute'], n['Param']],stdout=sub.PIPE,stderr=sub.PIPE))
                 output, errors = p.communicate()
-                if len(output)>0: output = output[:-1] # strip off the thrailing CR
-                #print ">>%s<<"%output
-            if output == '':
-                statements.gremlin('g.V().has("name","'+n['name']+'").out("next").valueMap()')
-            else:
+                #if len(output)>0: output = output[:-1] # strip off the thrailing CR
+                if len(output)>0: output = output.strip()
+                print ">>%s<<"%output
+            if 'Execute' in n and n['type'] == 'Execute_Branch':
                 statements.gremlin('g.V().has("name","'+n['name']+'").outE("next").has("Conditional","'+output+'").inV().valueMap()')
+            else:
+                statements.gremlin('g.V().has("name","'+n['name']+'").out("next").valueMap()')
             self.publish(statements, callback=self.perform_callback)
 
 def main():
