@@ -185,7 +185,7 @@ class WetwareWorker(Worker):
                     self.register_sensor_event(event, incident_id)
 
     def register_sensor_event(self, event, incident_id):
-        #TODO: register event via George's makeshift SES (but for now...)
+        #TODO: register event via the makeshift SES (but for now...)
         self.publish({'trigger': event['trigger'], 'topic': event['topic']}, topic='/topic/some-sensor.event.register')
         #TODO: change this if the sensor wants to dictate the event topic
         event_sub = None
@@ -218,7 +218,7 @@ class WetwareWorker(Worker):
                 }
                 self.publish(incident_alert, incident_obj['alert_topic'])
                 for responder in incident_obj['responders'].values():
-                    if responder['name'] == "David Horres":
+                    if responder['name'] == "Mark James":
                         responder_alert = {
                             'alert': "{0}, please head to {1} to investigate"
                             " high levels of {2}".format(responder['name'],

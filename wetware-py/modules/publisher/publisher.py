@@ -7,52 +7,174 @@ import time
 from wetware.worker import Worker
 from wetware.worker import ApolloConnection
 from wetware.neuron import Statements
+from wetware.neuron import Responses
 
 class WetwareWorker(Worker):
 
+    def my_callback(self, frame, context, transaction):
+        responses = Responses(frame)
+        print responses
+
     def run_setup(self):
-        self.send_neuron_statements()
-        #self.send_nlp_statements()
-
-    def send_neuron_statements(self):
-        #Add vertex by string 'name'
         statements = Statements()
-        statements.add_vertex("David")
-        self.publish(statements)
+        statements.gremlin("g.V().has('name','mark').outE('knows').propertyMap()")
+        self.publish(statements, topic='/queue/neuron.operation', callback=self.my_callback)
 
-        time.sleep(1)
+        # statements.add_vertex('mark')
+        # statements.add_vertex('zack')
+        # statements.add_edge('mark', 'knows', 'zack', {'amount':'alot'})
+        # self.publish(statements, '/queue/neuron.operation')
+        # import sys
+        # sys.exit(0)
 
-        #Add vertex by dict with properties
-        george = {'name': "George", 'age': 30, 'height': 1.6}
-        statements = Statements()
-        statements.add_vertex(george)
-        self.publish(statements)
 
-        time.sleep(1)
+        msg = """{
+            "Ontology": {
+                "Name": "TSPI"
+            },
+            "Nodes": [
+                {
+                    "TSPI": {
+                        "index": 0,
+                        "type": "Class",
+                        "parents": [
+                            "Wait_For_Command"
+                        ],
+                        "children": null,
+                        "rules": null
+                    }
+                },
+                {
+                    "Start": {
+                        "index": 1,
+                        "type": "Class",
+                        "parents": [
+                            "Wait_For_Command"
+                        ],
+                        "children": null,
+                        "rules": null
+                    }
+                },
+                {
+                    "TSPI_Container": {
+                        "isRoot": true,
+                        "index": 9,
+                        "type": "Class",
+                        "parents": null,
+                        "children": [
+                            "Wait_For_Command"
+                        ],
+                        "rules": null
+                    }
+                },
+                {
+                    "Read_File": {
+                        "index": 5,
+                        "type": "Execute",
+                        "parents": [
+                            "TSPI_Workflow"
+                        ],
+                        "children": [
+                            "Run_Moses"
+                        ],
+                        "rules": {
+                            "Execute": "doReadFile.py",
+                            "Param": "tspi.csv"
+                        }
+                    }
+                },
+                {
+                    "Calculate_Plateau": {
+                        "index": 3,
+                        "type": "Execute",
+                        "parents": [
+                            "Run_Moses"
+                        ],
+                        "children": [
+                            "Run_Optimization"
+                        ],
+                        "rules": {
+                            "Execute": "runMoses.py",
+                            "Param": "1 17 4"
+                        }
+                    }
+                },
+                {
+                    "Run_Moses": {
+                        "index": 4,
+                        "type": "Execute",
+                        "parents": [
+                            "Read_File"
+                        ],
+                        "children": [
+                            "Calculate_Plateau"
+                        ],
+                        "rules": {
+                            "Execute": "doCalcPlat.py"
+                        }
+                    }
+                },
+                {
+                    "Run_Optimization": {
+                        "index": 2,
+                        "type": "Execute",
+                        "parents": [
+                            "Calculate_Plateau"
+                        ],
+                        "children": null,
+                        "rules": {
+                            "Execute": "doOptimization.py",
+                            "Param": "--debug -v -f -xv"
+                        }
+                    }
+                },
+                {
+                    "Execute": {
+                        "index": 7,
+                        "type": "Execute",
+                        "parents": [
+                            "Wait_For_Command"
+                        ],
+                        "children": [
+                            "TSPI_Workflow"
+                        ],
+                        "rules": null
+                    }
+                },
+                {
+                    "Wait_For_Command": {
+                        "index": 8,
+                        "type": "Entry",
+                        "parents": [
+                            "TSPI_Container"
+                        ],
+                        "children": [
+                            "TSPI",
+                            "Start",
+                            "Execute"
+                        ],
+                        "rules": {
+                            "Command": "collectParents"
+                        }
+                    }
+                },
+                {
+                    "TSPI_Workflow": {
+                        "index": 6,
+                        "type": "Alias",
+                        "parents": [
+                            "Execute"
+                        ],
+                        "children": [
+                            "Read_File"
+                        ],
+                        "rules": null
+                    }
+                }
+            ]
+        }"""
+        #self.publish(msg)
 
-        #Add multiple vertices at once
-        statements = Statements()
-        statements.add_vertices("David", george)
-        self.publish(statements)
-
-        time.sleep(2)
-
-        #Add an edge with properties (where one vertex is identified as a string
-        # and the other by a dict)
-        #Vertices are created, but not with properties!
-        statements = Statements()
-        statements.add_edge("David", "knows", george, {'rel': 0.4})
-        self.publish(statements)
-
-    def send_nlp_statements(self):
-        statements = {"statements": ["David knows Ed.",
-                                     "David is nice.",
-                                     "The happiness of David is high.",
-                                     "Does David know Ed?",
-                                     "Is David nice?",
-                                     "What is the happiness of David?",
-                                 ]}
-        self.publish(statements, topic='/queue/wetware.nlp')
 
 def main():
     logging.basicConfig(level=logging.DEBUG)
