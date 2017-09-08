@@ -20,42 +20,36 @@ class WetwareWorker(Worker):
         if frame.headers['destination'] == self.args['input_topic']:
             try:
                 self.process_ake_json(message, transaction)
-            except KeyError:
+            except KeyError, e:
                 logging.error("Received invalid TSPI JSON structure")
+                logging.error(e)
+                raise
 
-    def process_ake_json(self, message, transaction):
-        if message['Ontology']['Name'] != "TSPI":
+    def process_ake_json(self, json_data, transaction):
+        if json_data['Ontology']['Name'] != "TSPI":
             logging.warning("Received ontology other than TSPI. Ignoring")
             return
-        statements = Statements()
-        for node in message['Nodes']:
-            name = node.keys()[0]
-            vertex = node[name]
-            vertex['name'] = name
-            vertex['rules'] = str(vertex['rules'])
-            if vertex['children']:
-                for child in vertex['children']:
-                    statements.add_edge(name, "precedes", child)
-            del vertex['children']
-            del vertex['parents']
-            statements.add_vertex(vertex)
-        self.publish(statements)
 
-    def run_setup(self):
-        pass
-        #self.query_for_ake()
-
-    def query_for_ake(self):
+        logging.debug(json_data)
+        
         statements = Statements()
-        statements.gremlin("g.V().valueMap()")
+        for node in json_data['Nodes']:
+            for name in node:
+                statements.add_vertex(name)
+                statements.add_vertex_property(name,'index',"%s"%node[name]['index'])
+                statements.add_vertex_property(name,'type',node[name]['type'])
+                if node[name]['rules']!=None:
+                    for prop in node[name]['rules']:
+                        statements.add_vertex_property(name,prop,node[name]['rules'][prop])
+        for edge in json_data['Links']:
+            for name in edge:
+                statements.add_edge(edge[name]['source'],'next',edge[name]['target'],edge[name]['rules'])
+        print "publishing the script"
         self.publish(statements, callback=self.print_results)
 
     def print_results(self, frame, context, transaction):
         responses = Responses(frame)
-        vertices = responses.get_vertex_objects()
-        logging.info(vertices)
-        import sys
-        sys.exit(1)
+        logging.debug(responses)
 
 def main():
     logging.basicConfig(level=logging.DEBUG)
