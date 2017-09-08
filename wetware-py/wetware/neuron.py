@@ -7,6 +7,7 @@
 import logging
 import json
 import base64
+import ast
 
 NEURON_DESTINATION = '/queue/neuron.operation'
 
@@ -269,13 +270,44 @@ class Responses(list):
                 # get rid of the list brackets in the string
                 vertex = vertex_str[1:-1]
                 vertex_obj = {}
+                # For keeping track of properties that might be JSON objects
+                obj_key = None
+                obj_value = None
                 #super-sensitive to this ', ', because valueMap() doesn't
                 # put spaces in between property values that are lists
                 # (which should really only be Geoshapes)
                 for prop in vertex.split(', '):
                     key = prop.split(':')[0].lstrip()
+                    value = prop[prop.index(':') + 1:]
+
+                    #Objects: check if the property is the beginning of an object
+                    if value.startswith('[{'):
+                        # Going to concatenate all the object properties
+                        #  over multiple iterations
+                        if not value.endswith('}]'):
+                            obj_value = value[1:]
+                            obj_key = key
+                            continue
+                        # Only one property, but let's cast to a dict
+                        else:
+                            vertex_obj[key] = ast.literal_eval(value[1:-1])
+                            continue
+                    #Objects: we're in the middle of concatenating object properties
+                    elif obj_key:
+                        # Ending the object concatenation
+                        if value.endswith('}]'):
+                            obj_value += ', ' + prop
+                            vertex_obj[obj_key] = ast.literal_eval(obj_value[:-1])
+                            obj_value = None
+                            obj_key = None
+                            continue
+                        # Keep concatenating
+                        else:
+                            obj_value += ', ' + prop
+                            continue
+
                     #Geoshapes
-                    if any(geo in prop for geo in ['point[', 'circle[', 'box[']):
+                    elif any(geo in prop for geo in ['point[', 'circle[', 'box[']):
                         #TODO: cast this into a wetware Geoshape class
                         #convert the text to a list (take out the shape name)
                         value = []
