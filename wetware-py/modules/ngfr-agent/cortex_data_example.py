@@ -32,13 +32,13 @@ class WetwareWorker(Worker):
         
     def submit_query(self):
         try:
-            subj = 'George'
+            subj = 'Mark'
             pred = 'write'
             obj = 'novel'
             
             # create statements for checking 
             #gremlin = [ 'g.V().has("name","' + subj + '").both("' + pred + '").has("name","' + obj + '")' ]
-            gremlin = [ "g.V().has('name','George').out('read').has('name','book')" ]
+            gremlin = [ "g.V().has('name','Mark').out('read').has('name','book')" ]
             
             statements = Statements()
             statements.gremlin(*gremlin)
@@ -56,7 +56,7 @@ class WetwareWorker(Worker):
         
     def insert_data(self):
         try:
-            #subj = 'George'
+            #subj = 'Mark'
             #pred = 'read'
             #obj = 'book'
             
