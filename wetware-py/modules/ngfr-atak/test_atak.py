@@ -17,7 +17,7 @@ class WetwareWorker(Worker):
                            }
             join_incident = {'incident_id': 'My new incident',
                              'user': {
-                                 'name': 'David Horres',
+                                 'name': 'Mark James',
                              }}
             close_incident = {'incident_id': 'My new incident' }
             self.publish(create_incident, topic='/queue/wetware.ngfr.register.new', callback=self.ack)
