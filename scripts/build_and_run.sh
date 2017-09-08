@@ -37,16 +37,16 @@ make
 popd
 
 #Wetware NLP for Audrey-Chat
-pushd ../wetware-py/modules/nlp
-make && make run
-popd
+# pushd ../wetware-py/modules/nlp
+# make && make run
+# popd
 
 #Wetware Registrar for Apollo users
-pushd ../wetware-py/modules/apollo_registrar
-make && make run
-popd
+# pushd ../wetware-py/modules/apollo_registrar
+# make && make run
+# popd
 
 #Audrey Chat
-pushd ../audrey-chat/
-make && make run
-popd
+# pushd ../audrey-chat/
+# make && make run
+# popd
