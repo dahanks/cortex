@@ -637,55 +637,196 @@ def transformRules(chars):
     
 rules = transformRules(
     ''' % arrival response
-        queryNAL1(HEARTBEAT:HIGH,new)  ~>
+        query(HEARTBEAT:HIGH,new)  ~>
           sendMsg(Notifying_fireman_of_high_heart_rate) ||
           forget(HEARTBEAT:HIGH);
        
-        queryNAL1(GAS_ALCOHOL:HIGH,new)  ~>
+        query(GAS_ALCOHOL:HIGH,new)  ~>
           sendMsg(Notifying_fireman_of_high_gas_concentration) ||
           forget(GAS_ALCOHOL:HIGH);
        
         % fire responses
-        queryNAL1(FIRE,new) & queryNAL1(HAZARDS:CHEMICALS,old) ~>
+        query(FIRE,new) & query(HAZARDS:CHEMICALS,old) ~>
           sendMsg(Suggesting_fireman_requires_hazmat_team);
        
-        queryNAL1(FIRE,new) & queryNAL1(SHOOTER,old) ~>
+        query(FIRE,new) & query(SHOOTER,old) ~>
           sendMsg(Notifying_fireman_of_shooter_alert);
        
-        queryNAL1(FIRE,new) ~>
+        query(FIRE,new) ~>
           sendMsg(Suggesting_fireman_deploys) ||
           forget(new) || post(FIRE,->,old,1,0.99,0);
        
         % picture analytic response
-        queryNAL1(HUMAN+WEAPON,new) ~>
+        query(HUMAN+WEAPON,new) ~>
           sendMsg(Suggesting_police_deploys) ||
           forget(new) || post(HUMAN+WEAPON,->,old,1,0.99,0);
        
         % tweat response
-        queryNAL1(SHOOTER,new) ~>
+        query(SHOOTER,new) ~>
           sendMsg(Audrey_accessing_camera) ||
           forget(new) || post(SHOOTER,->,old,1,0.99,0);
        
         % 911 response
-        queryNAL1(911_SUSPECT,new) ~>
+        query(911_SUSPECT,new) ~>
           sendMsg(Audrey_accessing_address_information) ||
           sendMsg(Audrey_accessing_geospatial_information) ||
           sendMsg(Audrey_accessing_to_social_media) ||
           forget(new) || post(911_SUSPECT,->,old,1,0.99,0);
        
         % building message
-        queryNAL1(BUILDING,new) ~>
+        query(BUILDING,new) ~>
           forget(new) || post(BUILDING,->,old,1,0.99,0);
        
         % smoke message
-        queryNAL1(SMOKE,new) ~>
+        query(SMOKE,new) ~>
           forget(new) || post(SMOKE,->,old,1,0.99,0);
        
         % high temperature message
-        queryNAL1(TEMP:HIGH,new) & queryNAL1(SMOKE,old) ~>
+        query(TEMP:HIGH,new) & query(SMOKE,old) ~>
           sendMsg(Firemen_Alert:_Flashover_Imminent) ||
           forget(new);
           ''')
+              
+def transformTRP(chars):
+    chars = re.sub("%.*\n", '', chars)                             # get rid of comments
+    statements = [s.split('~>') for s in chars.replace('\n','').replace(' ','').split(';')]
+    return [([pre.replace('(',' ').replace(')','').replace('->',' ').split() for pre in s[0].split('&')],
+             [act.replace('(',' ').replace(')','').replace(',',' ').replace('->',' -> ').split() for act in s[1].split('||')]) for s in statements[:-1]]
+
+rules = transformTRP(
+        '''
+          % arrival response
+          query(HEARTBEAT:HIGH->new)  ~>
+            sendMsg(Notifying_fireman_of_high_heart_rate) ||
+            forget(HEARTBEAT:HIGH);
+            
+          query(GAS_ALCOHOL:HIGH->new)  ~>
+            sendMsg(Notifying_fireman_of_high_gas_concentration) ||
+            forget(GAS_ALCOHOL:HIGH);
+        
+          % fire responses
+          query(FIRE->new) & query(SHOOTER->old) & query(HAZARDS:CHEMICALS->old) ~>
+            sendMsg(Notifying_fireman_of_shooter_alert) ||
+            sendMsg(Suggesting_fireman_requires_hazmat_team) ||
+            sendMsg(Suggesting_fireman_deploys) ||
+            forget(new) || post(FIRE->old,1,0.99,0);
+        
+          query(FIRE->new) & query(HAZARDS:CHEMICALS->old) ~>
+            sendMsg(Suggesting_fireman_requires_hazmat_team) ||
+            sendMsg(Suggesting_fireman_deploys) ||
+            forget(new) || post(FIRE->old,1,0.99,0);
+        
+          query(FIRE->new) & query(SHOOTER->old) ~>
+            sendMsg(Notifying_fireman_of_shooter_alert) ||
+            sendMsg(Suggesting_fireman_deploys) ||
+            forget(new) || post(FIRE->old,1,0.99,0);
+        
+          query(FIRE->new) ~>
+            sendMsg(Suggesting_fireman_deploys) ||
+            forget(new) || post(FIRE->old,1,0.99,0);
+        
+          % picture analytic response
+          query(HUMAN+WEAPON->new) ~>
+            sendMsg(Suggesting_police_deploys) ||
+            forget(new) || post(HUMAN+WEAPON->old,1,0.99,0);
+        
+          % tweat response
+          query(SHOOTER->new) ~>
+            sendMsg(Audrey_accessing_camera) ||
+            forget(new) || post(SHOOTER->old,1,0.99,0);
+
+          % 911 response
+          query(911_SUSPECT->new) ~>
+            sendMsg(Audrey_accessing_address_information) ||
+            sendMsg(Audrey_accessing_geospatial_information) ||
+            sendMsg(Audrey_accessing_to_social_media) ||
+            forget(new) ||
+            post(911_SUSPECT->old,1,0.99,0);
+            
+          % building message
+          query(BUILDING->new) ~>
+            forget(new) ||
+            post(BUILDING->old,1,0.99,0);
+            
+          % smoke message
+          query(SMOKE->new) ~>
+            forget(new) ||
+            post(SMOKE->old,1,0.99,0);
+
+          % high temperature message
+          query(TEMP:HIGH->new) & query(SMOKE->old) ~>
+            sendMsg(Firemen_Alert:_Flashover_Imminent) ||
+            forget(new);
+
+          True ~> nil
+        ''')
+
+rules= {'init':transformTRP(
+        '''
+          % arrival response
+          query(HEARTBEAT:HIGH->new)  ~>
+            sendMsg(Notifying_fireman_of_high_heart_rate) ||
+            forget(HEARTBEAT:HIGH);
+            
+          query(GAS_ALCOHOL:HIGH->new)  ~>
+            sendMsg(Notifying_fireman_of_high_gas_concentration) ||
+            forget(GAS_ALCOHOL:HIGH);
+        
+          % fire responses
+          query(FIRE->new) ~>
+            perform(fireResponses);
+        
+          % picture analytic response
+          query(HUMAN+WEAPON->new) ~>
+            sendMsg(Suggesting_police_deploys) ||
+            forget(new) || post(HUMAN+WEAPON->old,1,0.99,0);
+        
+          % tweat response
+          query(SHOOTER->new) ~>
+            sendMsg(Audrey_accessing_camera) ||
+            forget(new) || post(SHOOTER->old,1,0.99,0);
+
+          % 911 response
+          query(911_SUSPECT->new) ~>
+            sendMsg(Audrey_accessing_address_information) ||
+            sendMsg(Audrey_accessing_geospatial_information) ||
+            sendMsg(Audrey_accessing_to_social_media) ||
+            forget(new) ||
+            post(911_SUSPECT->old,1,0.99,0);
+            
+          % building message
+          query(BUILDING->new) ~>
+            forget(new) ||
+            post(BUILDING->old,1,0.99,0);
+            
+          % smoke message
+          query(SMOKE->new) ~>
+            forget(new) ||
+            post(SMOKE->old,1,0.99,0);
+
+          % high temperature message
+          query(TEMP:HIGH->new) & query(SMOKE->old) ~>
+            sendMsg(Firemen_Alert:_Flashover_Imminent) ||
+            forget(new);
+
+          True ~> nil;
+            '''),
+        'fireResponses':transformTRP(
+        '''
+          % fire responses
+          query(SHOOTER->old) & !query(SHOOTER->known) ~>
+            sendMsg(Notifying_fireman_of_shooter_alert) ||
+            post(SHOOTER->known,1,0.99,0);
+        
+          query(HAZARDS:CHEMICALS->old) & !query(HAZARDS:CHEMICALS->known) ~>
+            sendMsg(Suggesting_fireman_requires_hazmat_team) ||
+            post(HAZARDS:CHEMICALS->known,1,0.99,0);
+        
+          True ~>
+            sendMsg(Suggesting_fireman_deploys) ||
+            forget(new) || post(FIRE->old,1,0.99,0);
+            ''')
+        }
 
 def getRules(context):
     return rules
