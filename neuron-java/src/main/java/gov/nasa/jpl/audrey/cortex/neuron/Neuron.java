@@ -165,8 +165,8 @@ public class Neuron {
         logging.debug("Adding Vertex");
         GremlinPipeline pipe = new GremlinPipeline();
         TinkerGraph tinker = new TinkerGraph("local.properties");
-        tinker.addVertex("david");
-        //pipe.start(tinker.addVertex("david"));
+        tinker.addVertex("mark");
+        //pipe.start(tinker.addVertex("mark"));
         //pipe.start(tinker).
     }
 

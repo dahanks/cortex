@@ -18,9 +18,9 @@ class PublisherWorker(Worker):
     def sendNLP(self):
         data = { 'statements': [
 #            "Mark knows Zack",
-#            "Mark knows George",
-            "Does George know Zack?",
-#            "Does David know Lorna?",
+#            "Mark knows Ed",
+            "Does Ed know Zack?",
+#            "Does Mark know Ed?",
         ]}
         self.publish(data, '/topic/wetware.nlp', expect_reply=self.args['expect_reply'])
 
@@ -45,7 +45,7 @@ class PublisherWorker(Worker):
                          'fxns': [
                              {
                                  'fxn': 'addVertex',
-                                 'args': ['name', 'david']
+                                 'args': ['name', 'mark']
                              }
                          ]
                      },
@@ -53,7 +53,7 @@ class PublisherWorker(Worker):
                          'fxns': [
                              {
                                  'fxn': 'addVertex',
-                                 'args': ['name', 'lorna']
+                                 'args': ['name', 'ed']
                              }
                          ]
                      }
@@ -80,7 +80,7 @@ class PublisherWorker(Worker):
                                          },
                                      ]
                                  },
-                                 'args': ['name', 'david']
+                                 'args': ['name', 'mark']
                              }
                          ]
                      },
