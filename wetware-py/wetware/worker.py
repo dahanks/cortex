@@ -407,8 +407,6 @@ class Worker(object):
         defaults = dict()
         defaults['apollo_host'] = "127.0.0.1"
         defaults['apollo_port'] = "61613"
-        defaults['apollo_user'] = "admin"
-        defaults['apollo_password'] = "password"
         return defaults
 
     def __parse_config_file(self, config_file_path, subclass_section=None):
