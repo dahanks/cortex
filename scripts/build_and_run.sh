@@ -15,11 +15,6 @@ pushd ../apollo/
 make && make run
 popd
 
-#Maven
-#pushd ../maven/
-#make
-#popd
-
 #Titan
 pushd ../titan/
 make
