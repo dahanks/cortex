@@ -13,8 +13,9 @@ public class Neuron {
 
     public static final String APOLLO_HOSTNAME = "cortex-apollo";
     public static final int APOLLO_PORT = 61613;
-    public static final String APOLLO_USERNAME = "admin";
-    public static final String APOLLO_PASSWORD = "password";
+    /* Must specify a username and password below */
+    //public static final String APOLLO_USERNAME =;
+    //public static final String APOLLO_PASSWORD =;
     public static final String INPUT_DESTINATION = "/queue/neuron.operation";
 
     public static final String PARTITION_KEY = "_partition";
